@@ -23,6 +23,34 @@
 #include "lib.h"
 #include "logging.h"
 
+static int recv_magic(int fd, struct callbacks *cb, const char *fn)
+{
+        int n, magic = 0;
+
+        while ((n = read(fd, &magic, sizeof(magic))) == -1) {
+                if (errno == EINTR || errno == EAGAIN)
+                        continue;
+                PLOG_FATAL(cb, "%s: read", fn);
+        }
+        if (n != sizeof(magic))
+                LOG_FATAL(cb, "%s: Incomplete read %d", fn, n);
+        return ntohl(magic);
+}
+
+static void send_magic(int fd, int magic, struct callbacks *cb, const char *fn)
+{
+        int n;
+
+        magic = htonl(magic);
+        while ((n = write(fd, &magic, sizeof(magic))) == -1) {
+                if (errno == EINTR || errno == EAGAIN)
+                        continue;
+                PLOG_FATAL(cb, "%s: write", fn);
+        }
+        if (n != sizeof(magic))
+                LOG_FATAL(cb, "%s: Incomplete write %d", fn, n);
+}
+
 static const char control_port_secret[] = "neper control port secret";
 #define SECRET_SIZE (sizeof(control_port_secret))
 
@@ -30,7 +58,7 @@ static int ctrl_connect(const char *host, const char *port,
                         struct addrinfo **ai, struct options *opts,
                         struct callbacks *cb)
 {
-        int ctrl_conn, optval = 1;
+        int ctrl_conn, magic, optval = 1;
         ctrl_conn = try_connect(host, port, ai, opts, cb);
         if (setsockopt(ctrl_conn, IPPROTO_TCP, TCP_NODELAY, &optval,
                        sizeof(optval)))
@@ -40,6 +68,10 @@ static int ctrl_connect(const char *host, const char *port,
                         continue;
                 PLOG_FATAL(cb, "write");
         }
+        /* if authentication passes, server should write back a magic number */
+        magic = recv_magic(ctrl_conn, cb, __func__);
+        if (magic != opts->magic)
+                LOG_FATAL(cb, "magic mismatch: %d != %d", magic, opts->magic);
         return ctrl_conn;
 }
 
@@ -75,7 +107,8 @@ static int ctrl_listen(const char *host, const char *port,
         return fd_listen;
 }
 
-static int ctrl_accept(int ctrl_port, int *num_incidents, struct callbacks *cb)
+static int ctrl_accept(int ctrl_port, int *num_incidents, struct callbacks *cb,
+                       int magic)
 {
         char buf[1024], dump[8192], host[NI_MAXHOST], port[NI_MAXSERV];
         struct sockaddr_storage cli_addr;
@@ -117,39 +150,23 @@ retry:
                 do_close(ctrl_conn);
                 goto retry;
         }
+        /* tell client that authentication passes */
+        send_magic(ctrl_conn, magic, cb, __func__);
         LOG_INFO(cb, "Control connection established with %s:%s", host, port);
         return ctrl_conn;
 }
 
 static void ctrl_wait_client(int ctrl_conn, int expect, struct callbacks *cb)
 {
-        int n, magic = 0;
-retry:
-        while ((n = read(ctrl_conn, &magic, sizeof(magic))) == -1) {
-                if (errno == EINTR || errno == EAGAIN)
-                        continue;
-                PLOG_FATAL(cb, "read");
-        }
-        if (n != sizeof(magic))
-                LOG_FATAL(cb, "Incomplete read %d", n);
-        magic = ntohl(magic);
-        if (magic != expect) {
+        int magic;
+
+        while ((magic = recv_magic(ctrl_conn, cb, __func__)) != expect)
                 LOG_WARN(cb, "Unexpected magic %d", magic);
-                goto retry;
-        }
 }
 
 static void ctrl_notify_server(int ctrl_conn, int magic, struct callbacks *cb)
 {
-        int n;
-        magic = htonl(magic);
-        while ((n = write(ctrl_conn, &magic, sizeof(magic))) == -1) {
-                if (errno == EINTR || errno == EAGAIN)
-                        continue;
-                PLOG_FATAL(cb, "write");
-        }
-        if (n != sizeof(magic))
-                LOG_FATAL(cb, "Incomplete write %d", n);
+        send_magic(ctrl_conn, magic, cb, __func__);
         if (shutdown(ctrl_conn, SHUT_WR))
                 PLOG_ERROR(cb, "shutdown");
 }
@@ -202,7 +219,8 @@ void control_plane_wait_until_done(struct control_plane *cp)
                 LOG_INFO(cp->cb, "expecting %d clients", n);
                 for (i = 0; i < n; i++) {
                         client_fds[i] = ctrl_accept(cp->ctrl_port,
-                                                    &cp->num_incidents, cp->cb);
+                                                    &cp->num_incidents, cp->cb,
+                                                    cp->opts->magic);
                         LOG_INFO(cp->cb, "client %d connected", i);
                 }
                 do_close(cp->ctrl_port);  /* disallow further connections */
