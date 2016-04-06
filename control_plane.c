@@ -193,15 +193,32 @@ void control_plane_wait_until_done(struct control_plane *cp)
                 sleep(cp->opts->test_length);
                 LOG_INFO(cp->cb, "finished sleep");
         } else {
-                cp->ctrl_conn = ctrl_accept(cp->ctrl_port, &cp->num_incidents,
-                                            cp->cb);
-                LOG_INFO(cp->cb, "established control connection");
-                if (cp->opts->nonblocking)
-                        set_nonblocking(cp->ctrl_conn, cp->cb);
-                ctrl_wait_client(cp->ctrl_conn, cp->opts->magic, cp->cb);
-                LOG_INFO(cp->cb, "received client notification");
-                do_close(cp->ctrl_conn);
-                do_close(cp->ctrl_port);
+                const int n = cp->opts->num_clients;
+                int* client_fds = calloc(n, sizeof(int));
+                int i;
+
+                if (!client_fds)
+                        PLOG_FATAL(cp->cb, "calloc client_fds");
+                LOG_INFO(cp->cb, "expecting %d clients", n);
+                for (i = 0; i < n; i++) {
+                        client_fds[i] = ctrl_accept(cp->ctrl_port,
+                                                    &cp->num_incidents, cp->cb);
+                        LOG_INFO(cp->cb, "client %d connected", i);
+                }
+                do_close(cp->ctrl_port);  /* disallow further connections */
+                if (cp->opts->nonblocking) {
+                        for (i = 0; i < n; i++)
+                                set_nonblocking(client_fds[i], cp->cb);
+                }
+                LOG_INFO(cp->cb, "expecting %d notifications", n);
+                for (i = 0; i < n; i++) {
+                        ctrl_wait_client(client_fds[i], cp->opts->magic,
+                                         cp->cb);
+                        LOG_INFO(cp->cb, "received notification %d", i);
+                }
+                for (i = 0; i < n; i++)
+                        do_close(client_fds[i]);
+                free(client_fds);
         }
 }
 

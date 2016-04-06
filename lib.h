@@ -58,6 +58,7 @@ struct options {
         int maxevents;
         int num_flows;
         int num_threads;
+        int num_clients;
         int test_length;
         int buffer_size;
         int listen_backlog;

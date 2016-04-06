@@ -69,6 +69,7 @@ int main(int argc, char **argv)
         DEFINE_FLAG(fp, int,          maxevents,     1000,     0,  "Number of epoll events per epoll_wait() call");
         DEFINE_FLAG(fp, int,          num_flows,     1,       'F', "Total number of flows");
         DEFINE_FLAG(fp, int,          num_threads,   1,       'T', "Number of threads");
+        DEFINE_FLAG(fp, int,          num_clients,   1,        0,  "Number of clients");
         DEFINE_FLAG(fp, int,          test_length,   10,      'l', "Test length in seconds");
         DEFINE_FLAG(fp, int,          request_size,  1,       'Q', "Number of bytes in a request from client to server");
         DEFINE_FLAG(fp, int,          response_size, 1,       'R', "Number of bytes in a response from server to client");
