@@ -14,11 +14,20 @@
  * limitations under the License.
  */
 
-#ifndef THIRD_PARTY_NEPER_HEXDUMP_H
-#define THIRD_PARTY_NEPER_HEXDUMP_H
+#ifndef THIRD_PARTY_NEPER_PRINT_H
+#define THIRD_PARTY_NEPER_PRINT_H
 
-#include <stddef.h>
+#include <stdio.h>
+#include <sys/resource.h>
+#include <sys/time.h>
 
-char *hexdump(const char *in, size_t in_len, char *out, size_t out_len);
+struct callbacks;
+struct flow;
+struct percentiles;
+
+FILE *print_header(const char *path, const char *things, const char *nl,
+                   struct callbacks *);
+void print_latency_header(FILE *csv, const struct percentiles *);
+void print_rusage(FILE *csv, const struct rusage *, const char *nl);
 
 #endif

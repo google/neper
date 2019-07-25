@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-#ifndef THIRD_PARTY_NEPER_HEXDUMP_H
-#define THIRD_PARTY_NEPER_HEXDUMP_H
+#ifndef THIRD_PARTY_NEPER_LOOP_H
+#define THIRD_PARTY_NEPER_LOOP_H
 
-#include <stddef.h>
+struct thread;
 
-char *hexdump(const char *in, size_t in_len, char *out, size_t out_len);
+void *loop(struct thread *);
 
 #endif

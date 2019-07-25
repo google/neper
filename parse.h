@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-#ifndef THIRD_PARTY_NEPER_HEXDUMP_H
-#define THIRD_PARTY_NEPER_HEXDUMP_H
+#ifndef THIRD_PARTY_NEPER_PARSE_H
+#define THIRD_PARTY_NEPER_PARSE_H
 
-#include <stddef.h>
-
-char *hexdump(const char *in, size_t in_len, char *out, size_t out_len);
+void parse_all_samples(const char *arg, void *out, struct callbacks *cb);
+void parse_max_pacing_rate(const char *arg, void *out, struct callbacks *cb);
+void parse_unit(const char *arg, void *out, struct callbacks *);
 
 #endif

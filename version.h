@@ -14,10 +14,18 @@
  * limitations under the License.
  */
 
-#ifndef NEPER_VERSION_H
-#define NEPER_VERSION_H
+#ifndef THIRD_PARTY_NEPER_VERSION_H
+#define THIRD_PARTY_NEPER_VERSION_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 const char* get_version(void);
 void show_version(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

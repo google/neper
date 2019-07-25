@@ -15,6 +15,7 @@
  */
 
 #include "common.h"
+#include "countdown_cond.h"
 #include "flags.h"
 #include "lib.h"
 #include "parse.h"
@@ -23,7 +24,7 @@
 
 int main(int argc, char **argv)
 {
-        struct options opts = {.secret = "neper tcp_rr 201703241250"};
+        struct options opts = {.secret = "neper udp_rr 201703241230"};
         struct callbacks cb = {0};
         struct flags_parser *fp;
         int exit_code = 0;
@@ -34,9 +35,9 @@ int main(int argc, char **argv)
 
         /* Build up the flags from the most general to the most specific */
         fp = add_flags_common(fp);
-        fp = add_flags_tcp(fp);
+        fp = add_flags_udp(fp);
         fp = add_flags_rr(fp);
-        fp = add_flags_tcp_rr(fp);
+        fp = add_flags_udp_rr(fp);
 
         flags_parser_run(fp, argc, argv);
         if (opts.logtostderr)
@@ -46,9 +47,9 @@ int main(int argc, char **argv)
 
         /* Check all the options from most general to most specific */
         check_options_common(&opts, &cb);
-        check_options_tcp(   &opts, &cb);
+        check_options_udp(   &opts, &cb);
         check_options_rr(    &opts, &cb);
-        check_options_tcp_rr(&opts, &cb);
+        check_options_udp_rr(&opts, &cb);
 
         adjust_interval(&opts.interval, opts.test_length);
         if (opts.suicide_length) {
@@ -59,7 +60,7 @@ int main(int argc, char **argv)
         }
 
         /* Run the actual test */
-        exit_code = tcp_rr(&opts, &cb);
+        exit_code = udp_rr(&opts, &cb);
 exit:
         logging_exit(&cb);
         return exit_code;

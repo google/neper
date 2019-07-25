@@ -23,17 +23,17 @@ static const struct neper_fn client_fn = {
         .fn_loop_init = socket_connect_all_sync,
         .fn_flow_init = rr_flow_init,
         .fn_report    = rr_report_stats,
-        .fn_type      = SOCK_STREAM
+        .fn_type      = SOCK_DGRAM
 };
 
 static const struct neper_fn server_fn = {
         .fn_loop_init = socket_listen,
         .fn_flow_init = rr_flow_init,
         .fn_report    = rr_report_stats,
-        .fn_type      = SOCK_STREAM
+        .fn_type      = SOCK_DGRAM
 };
 
-int tcp_rr(struct options *opts, struct callbacks *cb)
+int udp_rr(struct options *opts, struct callbacks *cb)
 {
         const struct neper_fn *fn = opts->client ? &client_fn : &server_fn;
         return run_main_thread(opts, cb, fn);

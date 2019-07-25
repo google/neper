@@ -18,26 +18,43 @@
 
 all: binaries
 
-CFLAGS = -std=c99 -Wall -Werror -O3 -g -D_GNU_SOURCE
+CFLAGS = -std=c99 -Wall -O3 -g -D_GNU_SOURCE -DNO_LIBNUMA
 
 lib := \
+	check_all_options.o \
+	coef.o \
 	common.o \
 	control_plane.o \
 	cpuinfo.o \
+	define_all_flags.o \
 	flags.o \
 	flow.o \
 	hexdump.o \
-	interval.o \
+	histo.o \
 	logging.o \
+	loop.o \
 	numlist.o \
+	or_die.o \
+	parse.o \
 	percentiles.o \
-	sample.o \
+	pq.o \
+	print.o \
+	rusage.o \
+	snaps.o \
+	socket.o \
+	stats.o \
 	thread.o \
 	version.o
 
-tcp_rr-objs := tcp_rr_main.o tcp_rr.o $(lib)
+tcp_rr-objs := tcp_rr_main.o tcp_rr.o rr.o $(lib)
 
-tcp_stream-objs := tcp_stream_main.o tcp_stream.o $(lib)
+tcp_stream-objs := tcp_stream_main.o tcp_stream.o stream.o $(lib)
+
+tcp_crr-objs := tcp_crr_main.o tcp_crr.o rr.o $(lib)
+
+udp_rr-objs := udp_rr_main.o udp_rr.o rr.o $(lib)
+
+udp_stream-objs := udp_stream_main.o udp_stream.o stream.o $(lib)
 
 ext-libs := -lm -lpthread -lrt
 
@@ -47,7 +64,16 @@ tcp_rr: $(tcp_rr-objs)
 tcp_stream: $(tcp_stream-objs)
 	$(CC) -o $@ $^ $(ext-libs)
 
-binaries: tcp_rr tcp_stream
+tcp_crr: $(tcp_crr-objs)
+	$(CC) -o $@ $^ $(ext-libs)
+
+udp_rr: $(udp_rr-objs)
+	$(CC) -o $@ $^ $(ext-libs)
+
+udp_stream: $(udp_stream-objs)
+	$(CC) -o $@ $^ $(ext-libs)
+
+binaries: tcp_rr tcp_stream tcp_crr udp_rr udp_stream
 
 clean:
-	rm -f *.o tcp_rr tcp_stream
+	rm -f *.o tcp_rr tcp_stream tcp_crr udp_rr udp_stream
