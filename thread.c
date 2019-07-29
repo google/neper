@@ -14,63 +14,345 @@
  * limitations under the License.
  */
 
-#include "thread.h"
-#include <errno.h>
 #include <sched.h>
-#include <string.h>
 #include <sys/eventfd.h>
-#include <sys/resource.h>
-#include <unistd.h>
+
 #include "common.h"
 #include "control_plane.h"
 #include "cpuinfo.h"
-#include "logging.h"
-#include "sample.h"
+#include "flow.h"
+#include "histo.h"
+#include "loop.h"
+#include "percentiles.h"
+#include "pq.h"
+#include "print.h"
+#include "rusage.h"
+#include "snaps.h"
+#include "stats.h"
+#include "thread.h"
 
+#ifndef NO_LIBNUMA
+#include <libnuma/numa.h>
+#include <libnuma/numaint.h>
+#endif
+
+// max value = 1.0025^8192 = 764278329
+// If TIME_RESOLUTION is 0.01 us, max latency in histogram = 7.642783298s
+#define NEPER_HISTO_SIZE   8192  /* # of buckets in the histogram */
+#define NEPER_HISTO_GROWTH 1.0025 /* bucket growth rate */
+
+/* Callbacks for the neper_stats sumforeach() function. */
+
+static int
+fn_count_events(struct neper_stat *stat, void *ptr)
+{
+        const struct neper_histo *histo = stat->histo(stat);
+        return histo->events(histo);
+}
+
+static int
+fn_count_snaps(struct neper_stat *stat, void *ptr)
+{
+        const struct neper_snaps *snaps = stat->snaps(stat);
+        return snaps->count(snaps);
+}
+
+static int
+fn_enq(struct neper_stat *stat, void *ptr)
+{
+        struct neper_pq *pq = ptr;
+        pq->enq(pq, stat);
+        return 0;
+}
+
+void
+thread_resize_flows_or_die(struct thread *ts, int flowid)
+{
+        int new_max = (ts->flow_space + 1) * 2;
+        struct flow **new_flows;
+
+        if (new_max <= flowid)
+                new_max = flowid + 1;
+
+        new_flows = malloc_or_die (sizeof(struct flow *) * new_max, ts->cb);
+
+        int i;
+        for (i = 0; i < ts->flow_space; i++)
+                new_flows[i] = ts->flows[i];
+
+        for (; i < new_max; i++)
+                new_flows[i] = NULL;
+
+        free(ts->flows);
+        ts->flows = new_flows;
+        ts->flow_space = new_max;
+}
+
+/* Push out any final measurements */
+void
+thread_flush_stat(struct thread *ts) {
+        int i;
+
+        for (i = 0; i < ts->flow_space; i++) {
+                struct flow *f = ts->flows[i];
+                if (f == NULL)
+                        continue;
+
+                struct neper_stat *stat = flow_stat(f);
+                if (stat != NULL)
+                        stat->event(ts, stat, 0, true, NULL);
+        }
+}
+
+/* Disassociate flow from thread */
+void
+thread_clear_flow_or_die(struct thread *ts, struct flow *f)
+{
+        int flowid = flow_id(f);
+
+        if (flowid >= ts->flow_space) {
+                LOG_FATAL(ts->cb, "thread %d freeing unknown flow %d - %p",
+                          ts->index, flowid, f);
+        }
+        if (ts->flows[flowid] != f) {
+                LOG_FATAL(ts->cb, "thread %d freeing mismatched flow %d "
+                          "- %p vs %p",
+                          ts->index, flowid, f, ts->flows[flowid]);
+        }
+
+        ts->flows[flowid] = NULL;
+}
+
+/* Associate flow with thread */
+void
+thread_store_flow_or_die(struct thread *ts, struct flow *f) {
+        int flowid = flow_id(f);
+
+        if (flowid >= ts->flow_space) {
+                thread_resize_flows_or_die(ts, flowid);
+        }
+
+        if (ts->flows[flowid] != NULL) {
+                LOG_FATAL(ts->cb, "thread %d duplicate flow %d "
+                          "- new %p vs old %p", ts->index,
+                          flowid, f, ts->flows[flowid]);
+        }
+        ts->flows[flowid] = f;
+}
+
+
+/* Return the total number of events across all threads.  */
+
+int thread_stats_events(const struct thread *ts)
+{
+        const struct options *opts = ts[0].opts;
+        int i, sum = 0;
+
+        for (i = 0; i < opts->num_threads; i++) {
+                struct neper_stats *stats = ts[i].stats;
+                sum += stats->sumforeach(stats, fn_count_events, NULL);
+        }
+        return sum;
+}
+
+/* Return the total number of snapshots across all threads. */
+
+int thread_stats_snaps(const struct thread *ts)
+{
+        const struct options *opts = ts[0].opts;
+        int i, sum = 0;
+
+        for (i = 0; i < opts->num_threads; i++) {
+                struct neper_stats *stats = ts[i].stats;
+                sum += stats->sumforeach(stats, fn_count_snaps, NULL);
+        }
+        return sum;
+}
+
+/*
+ * Return the total number of flows for which snapshots have been collected
+ * across all threads.
+ */
+
+static int thread_stats_flows(const struct thread *ts)
+{
+        const struct options *opts = ts[0].opts;
+        int i, num_flows = 0;
+
+        for (i = 0; i < opts->num_threads; i++)
+                num_flows += ts[i].stats->flows(ts[i].stats);
+        return num_flows;
+}
+
+/*
+ * Create a priority queue, fill it with all stats structs across all threads,
+ * return it to the caller.
+ */
+
+struct neper_pq *thread_stats_pq(struct thread *ts)
+{
+        const struct options *opts = ts[0].opts;
+        struct callbacks *cb = ts[0].cb;
+        int i;
+
+        int num_snaps = thread_stats_snaps(ts);
+        PRINT(cb, "num_samples", "%d", num_snaps);
+        if (num_snaps < 2) {
+                LOG_ERROR(cb, "insufficient number of samples, "
+                          "needed 2 or more, got %d", num_snaps);
+                return NULL;
+        }
+
+        struct neper_pq *pq = neper_pq(neper_stat_cmp, thread_stats_flows(ts),
+                                       cb);
+
+        for (i = 0; i < opts->num_threads; i++)
+                ts[i].stats->sumforeach(ts[i].stats, fn_enq, pq);
+        return pq;
+}
+
+static int flows_in_thread(const struct thread *t)
+{
+        const struct options *opts = t->opts;
+        const int num_flows = opts->num_flows;
+        const int num_threads = opts->num_threads;
+        const int tid = t->index;
+
+        const int min_flows_per_thread = num_flows / num_threads;
+        const int remaining_flows = num_flows % num_threads;
+        const int flows_in_this_thread = tid < remaining_flows ?
+                                         min_flows_per_thread + 1 :
+                                         min_flows_per_thread;
+        return flows_in_this_thread;
+}
+
+static int first_flow_in_thread(const struct thread *t)
+{
+        const struct options *opts = t->opts;
+        const int num_flows = opts->num_flows;
+        const int num_threads = opts->num_threads;
+        const int tid = t->index;
+
+        const int a = num_flows / num_threads;
+        const int b = num_flows % num_threads;
+        const int c = MIN(b, tid);
+
+        return tid * a + c;
+}
+
+/* Fill out cpuset array with allowed CPUs. See get_cpuinfo() for more details.
+ * input params: cpuset: array of cpu_set_t to be filled
+ *               cb: general callback struct
+ * return: number of filled cpu_set_t in array cpuset
+ */
 static int get_cpuset(cpu_set_t *cpuset, struct callbacks *cb)
 {
-        int i, j, n, num_cores, physical_id[CPU_SETSIZE], core_id[CPU_SETSIZE];
+        int i, j = 0, n;
         struct cpuinfo *cpus;
+        cpu_set_t allowed_cpus;
+        int len = 0;
+        char *allowed_cores;
+        int start = -1, end;
+
+        CPU_ZERO(&allowed_cpus);
+        if (sched_getaffinity(0, sizeof(allowed_cpus), &allowed_cpus))
+                PLOG_FATAL(cb, "sched_getaffinity");
 
         cpus = calloc(CPU_SETSIZE, sizeof(struct cpuinfo));
         if (!cpus)
                 PLOG_FATAL(cb, "calloc cpus");
-        n = get_cpuinfo(cpus, CPU_SETSIZE);
+        n = get_cpuinfo(cpus, CPU_SETSIZE, cb);
         if (n == -1)
                 PLOG_FATAL(cb, "get_cpuinfo");
         if (n == 0)
                 LOG_FATAL(cb, "no cpu found in /proc/cpuinfo");
-        num_cores = 0;
+
+        /* Assume each processor ID takes max 3 chars + ','
+         * Last one does not have ',' so we have room for '\0'
+         */
+        allowed_cores = calloc(n, 4);
+        if (!allowed_cores)
+                PLOG_FATAL(cb, "calloc allowed_cores");
+
         for (i = 0; i < n; i++) {
                 LOG_INFO(cb, "%d\t%d\t%d\t%d\t%d", cpus[i].processor,
                          cpus[i].physical_id, cpus[i].siblings, cpus[i].core_id,
                          cpus[i].cpu_cores);
-                for (j = 0; j < num_cores; j++) {
-                        if (physical_id[j] == cpus[i].physical_id &&
-                            core_id[j] == cpus[i].core_id)
-                                break;
-                }
-                if (j == num_cores) {
-                        num_cores++;
+                if (CPU_ISSET(cpus[i].processor, &allowed_cpus)) {
                         CPU_ZERO(&cpuset[j]);
-                        core_id[j] = cpus[i].core_id;
-                        physical_id[j] = cpus[i].physical_id;
+                        CPU_SET(cpus[i].processor, &cpuset[j]);
+                        j++;
+
+                        if (start < 0)
+                                start = end = i;
+                        else if (i == end + 1)
+                                end = i;
                 }
-                CPU_SET(cpus[i].processor, &cpuset[j]);
+
+                if (start >= 0 && (i != end || i == n - 1)) {
+                        len += sprintf(allowed_cores + len,
+                                       end == start ? "%s%d" : "%s%d-%d",
+                                       len ? "," : "", start, end);
+                        start = -1;
+                }
         }
+        PRINT(cb, "allowed_core_num", "%d", j);
+        PRINT(cb, "allowed_cores", "%s", allowed_cores);
+        free(allowed_cores);
         free(cpus);
-        return num_cores;
+        return j;
 }
+
+void thread_time_start(struct thread *t, const struct timespec *now)
+{
+        pthread_mutex_lock(t->time_start_mutex);
+
+        if (timespec_is_zero(t->time_start)) {
+                LOG_INFO(t->cb, "Setting time_start in thread %d", t->index);
+                getrusage_enhanced(RUSAGE_SELF, t->rusage_start);
+                *t->time_start = *now;
+        }
+
+        pthread_mutex_unlock(t->time_start_mutex);
+}
+
+#ifndef NO_LIBNUMA
+static void get_numa_allowed_cpus(struct callbacks *cb, int numa_idx,
+                                  cpu_set_t *numa_allowed_cpus)
+{
+        cpu_set_t allowed_cpus;
+        cpu_set_t numa_cpus;
+        int i;
+
+        CPU_ZERO(&allowed_cpus);
+        if (sched_getaffinity(0, sizeof(allowed_cpus), &allowed_cpus))
+                PLOG_FATAL(cb, "sched_getaffinity");
+
+        CPU_ZERO(&numa_cpus);
+        for (i = 0; i < numa_num_configured_cpus(); i++) {
+                if (numa_node_of_cpu(i) == numa_idx)
+                        CPU_SET(i, &numa_cpus);
+        }
+
+        CPU_ZERO(numa_allowed_cpus);
+        CPU_AND(numa_allowed_cpus, &allowed_cpus, &numa_cpus);
+}
+#endif
 
 void start_worker_threads(struct options *opts, struct callbacks *cb,
                           struct thread *t, void *(*thread_func)(void *),
+                          const struct neper_fn *fn,
                           pthread_barrier_t *ready, struct timespec *time_start,
                           pthread_mutex_t *time_start_mutex,
-                          struct rusage *rusage_start, struct addrinfo *ai)
+                          struct rusage *rusage_start, struct addrinfo *ai,
+                          struct countdown_cond *data_pending,
+                          pthread_cond_t *loop_init_c,
+                          pthread_mutex_t *loop_init_m,
+                          int *loop_inited)
 {
         cpu_set_t *cpuset;
         pthread_attr_t attr;
-        int s, i, num_cores = 1;
+        int s, i, allowed_cores;
 
         cpuset = calloc(CPU_SETSIZE, sizeof(cpu_set_t));
         if (!cpuset)
@@ -83,32 +365,77 @@ void start_worker_threads(struct options *opts, struct callbacks *cb,
         if (s != 0)
                 LOG_FATAL(cb, "pthread_attr_init: %s", strerror(s));
 
-        if (opts->pin_cpu)
-                num_cores = get_cpuset(cpuset, cb);
+        allowed_cores = get_cpuset(cpuset, cb);
+        LOG_INFO(cb, "Number of allowed_cores = %d", allowed_cores);
+
+        int percentiles = percentiles_count(&opts->percentiles);
 
         for (i = 0; i < opts->num_threads; i++) {
                 t[i].index = i;
+                t[i].fn = fn;
+                t[i].ai_socktype = fn->fn_type;
                 t[i].ai = copy_addrinfo(ai);
+                t[i].epfd = epoll_create1_or_die(cb);
                 t[i].stop_efd = eventfd(0, 0);
                 if (t[i].stop_efd == -1)
                         PLOG_FATAL(cb, "eventfd");
-                t[i].samples = NULL;
                 t[i].opts = opts;
                 t[i].cb = cb;
+                t[i].num_local_hosts = count_local_hosts(opts);
+                t[i].flow_first = first_flow_in_thread(&t[i]);
+                t[i].flow_limit = flows_in_thread(&t[i]);
+                t[i].flow_count = 0;
+                t[i].percentiles = percentiles;
+                t[i].local_hosts = parse_local_hosts(opts, t[i].num_local_hosts,
+                                                     cb);
                 t[i].ready = ready;
                 t[i].time_start = time_start;
                 t[i].time_start_mutex = time_start_mutex;
                 t[i].rusage_start = rusage_start;
+                t[i].stats = neper_stats_init(cb);
+                t[i].rusage = neper_rusage(opts->interval);
+                t[i].data_pending = data_pending;
+                t[i].histo_factory = neper_histo_factory(&t[i],
+                                                         NEPER_HISTO_SIZE,
+                                                         NEPER_HISTO_GROWTH);
+                t[i].loop_inited = loop_inited;
+                t[i].loop_init_c = loop_init_c;
+                t[i].loop_init_m = loop_init_m;
 
                 if (opts->pin_cpu) {
                         s = pthread_attr_setaffinity_np(&attr,
-                                                        sizeof(cpu_set_t),
-                                                        &cpuset[i % num_cores]);
+                                                sizeof(cpu_set_t),
+                                                &cpuset[i % allowed_cores]);
                         if (s != 0) {
                                 LOG_FATAL(cb, "pthread_attr_setaffinity_np: %s",
                                           strerror(s));
                         }
                 }
+#ifndef NO_LIBNUMA
+                else if (opts->pin_numa) {
+                        int num_numa = numa_num_configured_nodes();
+                        cpu_set_t numa_allowed_cpus;
+
+                        get_numa_allowed_cpus(cb, i % num_numa,
+                                              &numa_allowed_cpus);
+                        s = pthread_attr_setaffinity_np(&attr,
+                                                sizeof(cpu_set_t),
+                                                &numa_allowed_cpus);
+                        if (s != 0) {
+                                LOG_FATAL(cb, "pthread_attr_setaffinity_np: %s",
+                                          strerror(s));
+                        }
+
+                }
+#endif
+
+                t[i].flows = NULL;
+                t[i].flow_space = 0;
+                /* support for rate limited flows */
+                t[i].rl.pending_flows = calloc_or_die(t[i].flow_limit,
+                                              sizeof(struct flow *), t->cb);
+                t[i].rl.pending_count = 0;
+                t[i].rl.next_event = ~0ULL;
 
                 s = pthread_create(&t[i].id, &attr, thread_func, &t[i]);
                 if (s != 0)
@@ -125,11 +452,14 @@ void start_worker_threads(struct options *opts, struct callbacks *cb,
 }
 
 void stop_worker_threads(struct callbacks *cb, int num_threads,
-                         struct thread *t, pthread_barrier_t *ready)
+                         struct thread *t, pthread_barrier_t *ready,
+                         pthread_cond_t *loop_init_c,
+                         pthread_mutex_t *loop_init_m)
 {
         int i, s;
+        uint64_t total_sleep = 0, total_delay = 0, total_reschedule = 0;
 
-        // tell them to stop
+        /* tell them to stop */
         for (i = 0; i < num_threads; i++) {
                 if (eventfd_write(t[i].stop_efd, 1))
                         PLOG_FATAL(cb, "eventfd_write");
@@ -137,18 +467,32 @@ void stop_worker_threads(struct callbacks *cb, int num_threads,
                         LOG_INFO(cb, "told thread %d to stop", i);
         }
 
-        // wait for them to stop
+        /* wait for them to stop */
         for (i = 0; i < num_threads; i++) {
                 s = pthread_join(t[i].id, NULL);
                 if (s != 0)
                         LOG_FATAL(cb, "pthread_join: %s", strerror(s));
                 else
                         LOG_INFO(cb, "joined thread %d", i);
+                total_delay += t[i].rl.delay_count;
+                total_sleep += t[i].rl.sleep_count;
+                total_reschedule += t[i].rl.reschedule_count;
         }
 
+        LOG_INFO(cb, "reschedule=%lu", total_reschedule);
+        LOG_INFO(cb, "delay=%lu", total_delay);
+        LOG_INFO(cb, "sleep=%lu", total_sleep);
         s = pthread_barrier_destroy(ready);
         if (s != 0)
                 LOG_FATAL(cb, "pthread_barrier_destroy: %s", strerror(s));
+
+        s = pthread_cond_destroy(loop_init_c);
+        if (s != 0)
+                LOG_FATAL(cb, "pthread_cond_destroy: %s", strerror(s));
+
+        s = pthread_mutex_destroy(loop_init_m);
+        if (s != 0)
+                LOG_FATAL(cb, "pthread_mutex_destroy: %s", strerror(s));
 }
 
 static void free_worker_threads(int num_threads, struct thread *t)
@@ -158,53 +502,83 @@ static void free_worker_threads(int num_threads, struct thread *t)
         for (i = 0; i < num_threads; i++) {
                 do_close(t[i].stop_efd);
                 free(t[i].ai);
-                free_samples(t[i].samples);
+                t[i].rusage->fini(t[i].rusage);
+                free(t[i].rl.pending_flows);
+                free(t[i].f_mbuf);
+                free(t[i].flows);
         }
         free(t);
 }
 
 int run_main_thread(struct options *opts, struct callbacks *cb,
-                    void *(*thread_func)(void *),
-                    void (*report_stats)(struct thread *))
+                    const struct neper_fn *fn)
 {
-        pthread_barrier_t ready_barrier; // shared by threads
+        void *(*thread_func)(void *) = (void *)loop;
+        pthread_barrier_t ready_barrier; /* shared by threads */
 
-        struct timespec time_start = {0}; // shared by flows
+        struct timespec time_start = {0}; /* shared by flows */
         pthread_mutex_t time_start_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-        struct rusage rusage_start; // updated when first packet comes
-        struct rusage rusage_end; // local to this function, never pass out
+        struct rusage rusage_start; /* updated when first packet comes */
+        struct rusage rusage_end; /* local to this function, never pass out */
 
         struct addrinfo *ai;
-        struct thread *ts; // worker threads
+        struct thread *ts; /* worker threads */
         struct control_plane *cp;
 
-        PRINT(cb, "total_run_time", "%d", opts->test_length);
+        struct countdown_cond *data_pending;
+
+        /* Set the options used for capturing cpu usage */
+        if (opts->stime_use_proc)
+                set_getrusage_enhanced(opts->stime_use_proc, opts->num_threads);
+
+        if (opts->delay)
+                prctl(PR_SET_TIMERSLACK, 1UL);
+
+        pthread_cond_t loop_init_c = PTHREAD_COND_INITIALIZER;
+        pthread_mutex_t loop_init_m = PTHREAD_MUTEX_INITIALIZER;
+        int loop_inited = 0;
+
+        if (opts->test_length > 0) {
+                PRINT(cb, "total_run_time", "%d", opts->test_length);
+                data_pending = NULL;
+        } else {
+                PRINT(cb, "total_transactions", "%d", -(opts->test_length));
+                data_pending = calloc(1, sizeof(*data_pending));
+                countdown_cond_init(data_pending, -(opts->test_length));
+        }
         if (opts->dry_run)
                 return 0;
 
-        cp = control_plane_create(opts, cb);
+#ifndef NO_LIBNUMA
+        if (opts->pin_numa && numa_available() == -1)
+                PLOG_FATAL(cb, "libnuma not available");
+#endif
+
+        cp = control_plane_create(opts, cb, data_pending);
         control_plane_start(cp, &ai);
 
-        // start threads *after* control plane is up, to reuse addrinfo.
+        /* start threads *after* control plane is up, to reuse addrinfo. */
+        reset_port(ai, atoi(opts->port), cb);
         ts = calloc(opts->num_threads, sizeof(struct thread));
-        start_worker_threads(opts, cb, ts, thread_func, &ready_barrier,
-                             &time_start, &time_start_mutex, &rusage_start, ai);
+        start_worker_threads(opts, cb, ts, thread_func, fn,  &ready_barrier,
+                             &time_start, &time_start_mutex, &rusage_start, ai,
+                             data_pending, &loop_init_c,
+                             &loop_init_m, &loop_inited);
         free(ai);
         LOG_INFO(cb, "started worker threads");
 
-        getrusage(RUSAGE_SELF, &rusage_start); // rusage start!
+        getrusage_enhanced(RUSAGE_SELF, &rusage_start); /* rusage start! */
         control_plane_wait_until_done(cp);
-        getrusage(RUSAGE_SELF, &rusage_end); // rusage end!
+        getrusage_enhanced(RUSAGE_SELF, &rusage_end); /* rusage end! */
 
-        stop_worker_threads(cb, opts->num_threads, ts, &ready_barrier);
+        stop_worker_threads(cb, opts->num_threads, ts, &ready_barrier,
+                            &loop_init_c, &loop_init_m);
         LOG_INFO(cb, "stopped worker threads");
 
-        control_plane_stop(cp);
         PRINT(cb, "invalid_secret_count", "%d", control_plane_incidents(cp));
-        control_plane_destroy(cp);
 
-        // begin printing rusage
+        /* begin printing rusage */
         PRINT(cb, "time_start", "%ld.%09ld", time_start.tv_sec,
               time_start.tv_nsec);
         PRINT(cb, "utime_start", "%ld.%06ld", rusage_start.ru_utime.tv_sec,
@@ -225,9 +599,15 @@ int run_main_thread(struct options *opts, struct callbacks *cb,
         PRINT(cb, "nvcsw_end", "%ld", rusage_end.ru_nvcsw);
         PRINT(cb, "nivcsw_start", "%ld", rusage_start.ru_nivcsw);
         PRINT(cb, "nivcsw_end", "%ld", rusage_end.ru_nivcsw);
-        // end printing rusage
+        /* end printing rusage */
 
-        report_stats(ts);
+        int ret = fn->fn_report(ts);
+        control_plane_stop(cp);
+        control_plane_destroy(cp);
+        PRINT(cb, "local_throughput", "%lld", opts->local_rate);
+        PRINT(cb, "remote_throughput", "%lld", opts->remote_rate);
+
         free_worker_threads(opts->num_threads, ts);
-        return 0;
+        free(data_pending);
+        return ret;
 }

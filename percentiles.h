@@ -14,18 +14,25 @@
  * limitations under the License.
  */
 
-#ifndef NEPER_PERCENTILES_H
-#define NEPER_PERCENTILES_H
+#ifndef THIRD_PARTY_NEPER_PERCENTILES_H
+#define THIRD_PARTY_NEPER_PERCENTILES_H
 
 #include <stdbool.h>
+
+#define PER_INDEX_99_9	101
+#define PER_INDEX_99_99	102
+#define PER_INDEX_COUNT	103
 
 struct callbacks;
 
 struct percentiles {
-        bool chosen[101];
+        bool chosen[PER_INDEX_COUNT];
 };
 
-void parse_percentiles(char *arg, void *out, struct callbacks *cb);
-void print_percentiles(const char *name, const void *var, struct callbacks *cb);
+void percentiles_parse(const char *arg, void *out, struct callbacks *);
+void percentiles_print(const char *name, const void *var, struct callbacks *);
+
+bool percentiles_chosen(const struct percentiles *, int percent);
+int percentiles_count(const struct percentiles *);
 
 #endif

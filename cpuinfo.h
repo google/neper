@@ -13,9 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "lib.h"
 
-#ifndef NEPER_CPUINFO_H
-#define NEPER_CPUINFO_H
+#ifndef THIRD_PARTY_NEPER_CPUINFO_H
+#define THIRD_PARTY_NEPER_CPUINFO_H
 
 struct cpuinfo {
         int processor;
@@ -25,11 +26,12 @@ struct cpuinfo {
         int cpu_cores;
 };
 
-/* Parse /proc/cpuinfo to get CPU topology.  cpus is a user-provided buffer to
- * be filled in.  max_cpus is the maximum number of items that can be filled in
- * cpus.  On success, the number of items filled in is returned.  Otherwise, -1
- * is returned and errno is set.
+/* Parse /proc/cpuinfo output and fill in struct cpuinfo for each processor
+ * input args: cpus: pointer to preallocated struct cpuinfo array
+ *             max_cpus: max number of cpus in the array
+ *             cb: general callback struct
+ * return: number of filled struct cpuinfo on success and -1 on failure
  */
-int get_cpuinfo(struct cpuinfo *cpus, int max_cpus);
+int get_cpuinfo(struct cpuinfo *cpus, int max_cpus, struct callbacks *cb);
 
 #endif

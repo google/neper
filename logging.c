@@ -112,7 +112,8 @@ static void logging(const char *file, int line, const char *func,
 
         if (!log_file)
                 return;
-        size = vsnprintf(buf, sizeof(buf), fmt, argp);
+        /* vsnprintf returns # of chars excluding the terminating NULL byte */
+        size = vsnprintf(buf, sizeof(buf), fmt, argp) + 1;
         if (size > sizeof(buf)) {
                 msg = malloc(size);
                 vsnprintf(msg, size, fmt, argp);
@@ -201,9 +202,21 @@ static void logtostderr(void *logger)
         g_logtostderr = true;
 }
 
-void logging_init(struct callbacks *cb)
+void logging_init(struct callbacks *cb, int argc, char **argv)
 {
-        open_log();
+	/*
+	 * Quickly scan options, if we have --logtostderr we do not
+	 * need to create a logfile.
+	 */
+	int i;
+	for (i = 1; i < argc; i++) {
+		if (!strcmp(argv[i], "--logtostderr")) {
+			log_file = stderr;
+			break;
+		}
+	}
+	if (!log_file)
+		open_log();
         cb->logger = NULL;
         cb->print = print;
         cb->log_fatal = log_fatal;

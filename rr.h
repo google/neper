@@ -14,11 +14,13 @@
  * limitations under the License.
  */
 
-#ifndef THIRD_PARTY_NEPER_HEXDUMP_H
-#define THIRD_PARTY_NEPER_HEXDUMP_H
+#ifndef THIRD_PARTY_NEPER_RR_H
+#define THIRD_PARTY_NEPER_RR_H
 
-#include <stddef.h>
+struct thread;
 
-char *hexdump(const char *in, size_t in_len, char *out, size_t out_len);
+void crr_flow_init(struct thread *, int fd);
+void rr_flow_init(struct thread *, int fd);
+int rr_report_stats(struct thread *);
 
 #endif

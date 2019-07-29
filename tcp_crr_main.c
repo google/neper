@@ -23,7 +23,7 @@
 
 int main(int argc, char **argv)
 {
-        struct options opts = {.secret = "neper tcp_rr 201703241250"};
+        struct options opts = {0};
         struct callbacks cb = {0};
         struct flags_parser *fp;
         int exit_code = 0;
@@ -36,8 +36,9 @@ int main(int argc, char **argv)
         fp = add_flags_common(fp);
         fp = add_flags_tcp(fp);
         fp = add_flags_rr(fp);
-        fp = add_flags_tcp_rr(fp);
+        fp = add_flags_tcp_crr(fp);
 
+        /* Now parse the command line arguments */
         flags_parser_run(fp, argc, argv);
         if (opts.logtostderr)
                 cb.logtostderr(cb.logger);
@@ -45,10 +46,10 @@ int main(int argc, char **argv)
         flags_parser_destroy(fp);
 
         /* Check all the options from most general to most specific */
-        check_options_common(&opts, &cb);
-        check_options_tcp(   &opts, &cb);
-        check_options_rr(    &opts, &cb);
-        check_options_tcp_rr(&opts, &cb);
+        check_options_common( &opts, &cb);
+        check_options_tcp(    &opts, &cb);
+        check_options_rr(     &opts, &cb);
+        check_options_tcp_crr(&opts, &cb);
 
         adjust_interval(&opts.interval, opts.test_length);
         if (opts.suicide_length) {
@@ -58,8 +59,9 @@ int main(int argc, char **argv)
                 }
         }
 
+
         /* Run the actual test */
-        exit_code = tcp_rr(&opts, &cb);
+        exit_code = tcp_crr(&opts, &cb);
 exit:
         logging_exit(&cb);
         return exit_code;

@@ -14,11 +14,15 @@
  * limitations under the License.
  */
 
-#ifndef THIRD_PARTY_NEPER_HEXDUMP_H
-#define THIRD_PARTY_NEPER_HEXDUMP_H
+#ifndef THIRD_PARTY_NEPER_SOCKET_H
+#define THIRD_PARTY_NEPER_SOCKET_H
 
-#include <stddef.h>
+struct thread;
 
-char *hexdump(const char *in, size_t in_len, char *out, size_t out_len);
+void socket_listen(struct thread *);
+
+int  socket_connect_one(struct thread *, int flags);
+void socket_connect_all_sync(struct thread *);
+void socket_connect_all_async(struct thread *);
 
 #endif

@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-#ifndef NEPER_LOGGING_H
-#define NEPER_LOGGING_H
+#ifndef THIRD_PARTY_NEPER_LOGGING_H
+#define THIRD_PARTY_NEPER_LOGGING_H
 
 struct callbacks;
 
-void logging_init(struct callbacks *);
+void logging_init(struct callbacks *, int argc, char **argv);
 void logging_exit(struct callbacks *);
 
 #define PRINT(cb, key, value_fmt, args...) \

@@ -14,15 +14,37 @@
  * limitations under the License.
  */
 
-#ifndef NEPER_INTERVAL_H
-#define NEPER_INTERVAL_H
+#include "version.h"
 
-struct flow;
-struct thread;
-struct interval;
+#include <stdio.h>
 
-struct interval *interval_create(double interval_in_seconds, struct thread *t);
-void interval_collect(struct flow *flow, struct thread *t);
-void interval_destroy(struct interval *itv);
+#define MAJOR 1
+#define MINOR 2
+#define PATCH 0
 
+#define AS_STRING2(x) #x
+#define AS_STRING(x) AS_STRING2(x)
+
+#ifdef BUILD_CHANGELIST
+#define BUILD AS_STRING(BUILD_CHANGELIST)
 #endif
+
+static const char g_version[] =
+        AS_STRING(MAJOR) "." AS_STRING(MINOR) "." AS_STRING(PATCH)
+#ifdef BUILD
+        "+" BUILD
+#endif
+;
+
+extern "C" const char* get_version(void)
+{
+        return g_version;
+}
+
+extern "C" void show_version(void)
+{
+        printf("%s\n", get_version());
+#ifdef BUILD_ID
+        printf("http://sponge/%s\n", BUILD_ID);
+#endif
+}

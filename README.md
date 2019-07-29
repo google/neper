@@ -7,18 +7,38 @@ neper is a Linux networking performance tool.
 * Collect statistics in a more accurate way.
 * Export statistics to CSV for easier consumption by other tools.
 
-neper currently supports two workloads:
+neper currently supports five workloads:
 
 * `tcp_rr` generates request/response workload (similar to HTTP or RPC) over
   TCP
+* `tcp_crr` is similar to tcp_rr but establishes a fresh connection for each
+  request/response pair
 * `tcp_stream` generates bulk data transfer workload (similar to FTP or `scp`)
   over TCP
+* `udp_rr` generates request/response workload (similar to HTTP or RPC) over
+  UDP
+* `udp_stream` generates bulk data transfer workload (similar to FTP or `scp`)
+  over UDP
 
 neper as a small code base with clean coding style and structure, and is
 easy to extend with new workloads and/or new options.  It can also be embedded
 as a library in a larger application to generate epoll-based workloads.
 
 Disclaimer: This is not an official Google product.
+
+neper was at one time internally known as gperfnet.  This documentation may use both names
+interchangeably.
+
+This file documents the usage of neper as a tool.
+
+Table of contents:
+
+[TOC]
+
+## Install
+
+Currently neper consists of five binaries, `tcp_rr` and `tcp_stream` and
+`tcp_crr` and `udp_rr` and `udp_stream, corresponding to five workloads.
 
 ## Basic usage
 
@@ -35,10 +55,17 @@ is the process which connects to the server.  The ordering of `bind()` and
 are synchronized properly.
 
 When launching the client process, we can specify the number of seconds to
-generate network traffic.  After that duration, the client will notify the
-server to stop and exit.  To run the test again, we have to restart both the
-client and the server.  This is different from netperf, and hopefully should
-make individual tests more independent from each other.
+generate network traffic "-l, --test-length".  After that duration, the client
+will notify the server to stop and exit.  To run the test again, we have to
+restart both the client and the server.  This is different from netperf, and
+hopefully should make individual tests more independent from each other.
+
+Optionally, a negative value for "-l, --test-length", a la netperf, can be
+specified where the absolute value is used for rr test to specify the number of
+transactions instead of time.  The transacions are distributed accross flows on
+demand.  Note, the "-s, --suicide-length" option can be used to specify a time
+limit.  Also, the negative value isn't currently supported for all tests, e.g.
+stream test, support for tests other than rr maybe added in the future.
 
 ### `tcp_rr`
 
@@ -89,7 +116,9 @@ In the case of neper, two ports are being used, one for control plane, the
 other one for data plane.  Default ports are 12866 for control plane and 12867
 for data plane.  They can be overridden by `-C` (short for `--control-port`)
 and `-P` (short for `--port`), respectively.  Default port numbers are chosen
-so that they don't collide with the port 12865 used by netperf.
+so that they don't collide with the port 12865 used by netperf. Note that for
+UDP there is one data port per flow, allocated in a sequential range on the
+server.
 
 Immediately after the client process prints the options, it will connect to the
 server and start sending packets.  After a period of time (by default 10
@@ -195,9 +224,10 @@ In both cases, the flows have bidirectional bulk data transfer.  Previously,
 netperf users may emulate this behavior with `TCP_STREAM` and `TCP_MAERTS`, at
 the cost of doubling the number of netperf processes.
 
-Note that we don't have netperf `TCP_MAERTS` in neper, as you can always
-choose where to specify the `-c` option.  The usage model is basically
-different, as we don't have a daemon (like netserver) either.
+To have netperf `TCP_MAERTS` test, pass `-M` which overrides `-r` and `-w`.
+
+    server$ tcp_stream -M
+    client$ tcp_stream -c -H server -M
 
 ## Options
 
@@ -205,7 +235,7 @@ different, as we don't have a daemon (like netserver) either.
 
     client
     host
-    local_host
+    local_hosts
     control_port
     port
 
@@ -219,6 +249,7 @@ different, as we don't have a daemon (like netserver) either.
     dry_run
     logtostderr
     nonblocking
+    buffer_size
 
 ### Statistics options
 
@@ -231,11 +262,17 @@ different, as we don't have a daemon (like netserver) either.
     min_rto
     listen_backlog
 
-### `tcp_rr` options
+### `tcp_rr` and `tcp_crr` options
 
     request_size
     response_size
-    buffer_size
+    percentiles
+    num_ports
+
+### `udp_rr` options
+
+    request_size
+    response_size
     percentiles
 
 The output is only available in the detailed form (`samples.csv`) but not in
@@ -263,7 +300,13 @@ the stdout summary.
     enable_write
     epoll_trigger
     delay
-    buffer_size
+    throughput_opt
+
+### `udp_stream` options
+
+    reuseaddr
+    delay
+    throughput_opt
 
 ## Output format
 
@@ -295,9 +338,10 @@ be insignificant.  However, the keys are case sensitive.
     nivcsw_start
     nivcsw_end
 
-#### `tcp_rr`
+#### `tcp_rr` and `tcp_crr`
 
     num_transactions
+    num_ports
     throughput
     correlation_coefficient # for throughput
 
@@ -305,7 +349,23 @@ be insignificant.  However, the keys are case sensitive.
 
     num_transactions
     throughput_Mbps
-    correlation_coefficient # for throughput_Mbps
+    correlation_coefficient # for throughput
+    throughput_units
+    throughput
+
+#### `udp_rr`
+
+    num_transactions
+    throughput
+    correlation_coefficient # for throughput
+
+#### `udp_stream`
+
+    num_transactions
+    throughput_Mbps
+    correlation_coefficient # for throughput
+    throughput_units
+    throughput
 
 ## Contribution guidelines
 

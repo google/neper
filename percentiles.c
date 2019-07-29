@@ -23,7 +23,7 @@
 #include "lib.h"
 #include "logging.h"
 
-void parse_percentiles(char *arg, void *out, struct callbacks *cb)
+void percentiles_parse(const char *arg, void *out, struct callbacks *cb)
 {
         struct percentiles *p = out;
         char *endptr;
@@ -37,9 +37,19 @@ void parse_percentiles(char *arg, void *out, struct callbacks *cb)
                         PLOG_FATAL(cb, "strtol");
                 if (endptr == arg)
                         break;
-                if (val < 0 || val > 100)
+                if ((val < 0 || val > 100) && (val != 999) && (val != 9999))
                         LOG_FATAL(cb, "%ld percentile doesn't exist", val);
-                p->chosen[val] = true;
+                switch (val) {
+                case 999:
+                        p->chosen[PER_INDEX_99_9] = true;
+                        break;
+                case 9999:
+                        p->chosen[PER_INDEX_99_99] = true;
+                        break;
+                default:
+                        p->chosen[val] = true;
+                        break;
+                }
                 LOG_INFO(cb, "%ld percentile is chosen", val);
                 if (*endptr == '\0')
                         break;
@@ -47,7 +57,7 @@ void parse_percentiles(char *arg, void *out, struct callbacks *cb)
         }
 }
 
-void print_percentiles(const char *name, const void *var, struct callbacks *cb)
+void percentiles_print(const char *name, const void *var, struct callbacks *cb)
 {
         const struct percentiles *p = var;
         char buf[10], s[400] = "";
@@ -59,7 +69,31 @@ void print_percentiles(const char *name, const void *var, struct callbacks *cb)
                         strcat(s, buf);
                 }
         }
+        if (p->chosen[PER_INDEX_99_9])
+                strcat(s, "99.9,");
+        if (p->chosen[PER_INDEX_99_99])
+                strcat(s, "99.99,");
         if (strlen(s) > 0)
                 s[strlen(s) - 1] = '\0'; /* remove trailing comma */
         PRINT(cb, name, "%s", s);
+}
+
+bool percentiles_chosen(const struct percentiles *p, int percent)
+{
+        if (p)
+                return p->chosen[percent];
+
+        return false;
+}
+
+int percentiles_count(const struct percentiles *p)
+{
+        if (p) {
+                int i, sum = 0;
+                for (i = 0; i < PER_INDEX_COUNT; i++)
+                        sum += p->chosen[i] ? 1 : 0;
+                return sum;
+        }
+
+        return 0;
 }

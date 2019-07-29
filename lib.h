@@ -14,39 +14,47 @@
  * limitations under the License.
  */
 
-#ifndef NEPER_LIB_H
-#define NEPER_LIB_H
+#ifndef THIRD_PARTY_NEPER_LIB_H
+#define THIRD_PARTY_NEPER_LIB_H
 
 #include <stdbool.h>
+#include "countdown_cond.h"
 #include "percentiles.h"
+
+struct countdown_cond;
 
 struct callbacks {
         void *logger;
 
         /* Print in key=value format and keep track of the line number.
          * Not thread-safe. */
-        void (*print)(void *logger, const char *key, const char *value, ...);
+        void (*print)(void *logger, const char *key, const char *value, ...)
+            __attribute__((format(printf, 3, 4)));
 
         /* Use for undesired and unexpected events, that the program cannot
          * recover from. Use these whenever an event happens from which you
          * actually want all servers to die and dump a stack trace. */
         void (*log_fatal)(void *logger, const char *file, int line,
-                          const char *function, const char *format, ...);
+                          const char *function, const char *format, ...)
+            __attribute__((format(printf, 5, 6)));
 
         /* Use for undesired and unexpected events that the program can recover
          * from. All ERRORs should be actionable - it should be appropriate to
          * file a bug whenever an ERROR occurs in production. */
         void (*log_error)(void *logger, const char *file, int line,
-                          const char *function, const char *format, ...);
+                          const char *function, const char *format, ...)
+            __attribute__((format(printf, 5, 6)));
 
         /* Use for undesired but relatively expected events, which may indicate
          * a problem. For example, the server received a malformed query. */
         void (*log_warn)(void *logger, const char *file, int line,
-                         const char *function, const char *format, ...);
+                         const char *function, const char *format, ...)
+            __attribute__((format(printf, 5, 6)));
 
         /* Use for state changes or other major events, or to aid debugging. */
         void (*log_info)(void *logger, const char *file, int line,
-                         const char *function, const char *format, ...);
+                         const char *function, const char *format, ...)
+            __attribute__((format(printf, 5, 6)));
 
         /* Notify the logger to log to stderr. */
         void (*logtostderr)(void *logger);
@@ -59,32 +67,46 @@ struct options {
         int num_flows;
         int num_threads;
         int num_clients;
+        int num_ports;
         int test_length;
         int buffer_size;
         int listen_backlog;
         int suicide_length;
+        int recv_flags;
+        bool stime_use_proc; /* Enable use of /proc/stat values for stime */
         bool ipv4;
         bool ipv6;
         bool client;
         bool debug;
         bool dry_run;
         bool pin_cpu;
+#ifndef NO_LIBNUMA
+        bool pin_numa;
+#endif
         bool reuseaddr;
         bool logtostderr;
         bool nonblocking;
+        bool tcp_fastopen;
+        bool skip_rx_copy;
         double interval;
         long long max_pacing_rate;
-        const char *local_host;
+        const char *local_hosts;
         const char *host;
         const char *control_port;
         const char *port;
         const char *all_samples;
+        const char secret[32]; /* includes test name */
 
         /* tcp_stream */
         bool enable_read;
         bool enable_write;
+        bool enable_tcp_maerts;
         bool edge_trigger;
-        unsigned long delay;
+        unsigned long delay;  /* ns, also used in tcp_rr */
+        const struct rate_conversion *throughput_opt;
+
+        unsigned long long local_rate;  /* updated in report */
+        unsigned long long remote_rate; /* updated in final msg */
 
         /* tcp_rr */
         int request_size;
@@ -92,7 +114,18 @@ struct options {
         struct percentiles percentiles;
 };
 
-int tcp_stream(struct options *opts, struct callbacks *cb);
-int tcp_rr(struct options *opts, struct callbacks *cb);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+int tcp_stream(struct options *, struct callbacks *);
+int udp_stream(struct options *, struct callbacks *);
+int tcp_rr(struct options *, struct callbacks *);
+int udp_rr(struct options *, struct callbacks *);
+int tcp_crr(struct options *, struct callbacks *);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

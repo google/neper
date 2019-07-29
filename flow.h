@@ -14,32 +14,46 @@
  * limitations under the License.
  */
 
-#ifndef NEPER_FLOW_H
-#define NEPER_FLOW_H
+#ifndef THIRD_PARTY_NEPER_FLOW_H
+#define THIRD_PARTY_NEPER_FLOW_H
 
+#include <stdbool.h>
 #include <stdint.h>
+#include <sys/socket.h>
 #include <sys/types.h>
 
-struct callbacks;
-struct interval;
-struct numlist;
-struct options;
+struct flow;  /* note: struct is defined opaquely within flow.c */
+struct neper_stat;
+struct thread;
 
-struct flow {
-        int fd;
-        int id;
-        ssize_t bytes_read;
-        ssize_t bytes_to_read;
-        ssize_t bytes_to_write;
-        unsigned long transactions;
-        struct timespec write_time;
-        struct numlist *latency;
-        struct interval *itv;
+typedef void (*flow_handler)(struct flow *, uint32_t);
+
+/* Simple accessors. */
+
+int                flow_fd(const struct flow *);
+int                flow_id(const struct flow *);
+void              *flow_mbuf(const struct flow *);
+void              *flow_opaque(const struct flow *);
+struct neper_stat *flow_stat(const struct flow *);
+struct thread     *flow_thread(const struct flow *);
+
+int flow_postpone(struct flow *);
+int flow_serve_pending(struct thread *t);  /* process postponed events */
+void flow_event(const struct epoll_event *);  /* process one epoll event */
+void flow_mod(struct flow *, flow_handler, uint32_t events, bool or_die);
+void flow_reconnect(struct flow *, flow_handler, uint32_t events);
+
+struct flow_create_args {
+        struct thread *thread;      /* owner of this flow */
+        int fd;                     /* the associated fd for epoll */
+        uint32_t events;            /* the epoll event mask */
+        void *opaque;               /* state opaque to the calling layer */
+        flow_handler handler;       /* state machine: initial callback */
+        void *(*mbuf_alloc)(struct thread *);  /* allocates message buffer */
+        struct neper_stat *(*stat)(struct flow *); /* stats callback */
 };
 
-void epoll_add_or_die(int epollfd, int fd, uint32_t, struct callbacks *cb);
-struct flow *addflow(int tid, int epfd, int fd, int flow_id, uint32_t events,
-                     struct options *opts, struct callbacks *cb);
-void delflow(int tid, int epfd, struct flow *flow, struct callbacks *cb);
+void flow_create(const struct flow_create_args *);
+void flow_delete(struct flow *);
 
 #endif

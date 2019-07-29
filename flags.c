@@ -15,17 +15,14 @@
  */
 
 #include "flags.h"
+
 #include <ctype.h>
 #include <getopt.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include "lib.h"
-#include "logging.h"
+
+#include "common.h"
 #include "version.h"
 
-typedef void (*parser_t)(char *, void *, struct callbacks *);
+typedef void (*parser_t)(const char *, void *, struct callbacks *);
 typedef void (*printer_t)(const char *, const void *, struct callbacks *);
 
 struct flag {

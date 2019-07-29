@@ -14,11 +14,16 @@
  * limitations under the License.
  */
 
-#ifndef THIRD_PARTY_NEPER_HEXDUMP_H
-#define THIRD_PARTY_NEPER_HEXDUMP_H
+#ifndef THIRD_PARTY_NEPER_STREAM_H
+#define THIRD_PARTY_NEPER_STREAM_H
 
-#include <stddef.h>
+#include <stdint.h>
 
-char *hexdump(const char *in, size_t in_len, char *out, size_t out_len);
+struct flow;
+struct thread;
+
+void stream_flow_init(struct thread *, int fd);
+void stream_handler(struct flow *, uint32_t events);
+int stream_report(struct thread *);
 
 #endif
