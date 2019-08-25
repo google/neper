@@ -62,7 +62,7 @@ hopefully should make individual tests more independent from each other.
 
 Optionally, a negative value for "-l, --test-length", a la netperf, can be
 specified where the absolute value is used for rr test to specify the number of
-transactions instead of time.  The transacions are distributed accross flows on
+transactions instead of time.  The transacions are distributed across flows on
 demand.  Note, the "-s, --suicide-length" option can be used to specify a time
 limit.  Also, the negative value isn't currently supported for all tests, e.g.
 stream test, support for tests other than rr maybe added in the future.
