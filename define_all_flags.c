@@ -41,6 +41,7 @@ struct flags_parser *add_flags_common(struct flags_parser *fp)
         DEFINE_FLAG(fp, bool,         pin_cpu,       false,   'U', "Pin threads to CPU cores");
         DEFINE_FLAG(fp, bool,         logtostderr,   false,    0,  "Log to stderr");
         DEFINE_FLAG(fp, bool,         nonblocking,   false,    0,  "Make sure syscalls are all nonblocking");
+        DEFINE_FLAG(fp, bool,         freebind,      false,    0,  "Set FREEBIND socket option");
         DEFINE_FLAG(fp, double,       interval,      1.0,     'I', "For how many seconds that a sample is generated");
         DEFINE_FLAG(fp, long long,    max_pacing_rate, 0,     'm', "SO_MAX_PACING_RATE value; use as 32-bit unsigned");
         DEFINE_FLAG_PARSER(fp,        max_pacing_rate, parse_max_pacing_rate);
@@ -61,6 +62,7 @@ struct flags_parser *add_flags_tcp(struct flags_parser *fp)
         /* Define flags common to all TCP main programs */
         DEFINE_FLAG(fp, int,          num_ports,     1,        0,  "Number of server data ports");
         DEFINE_FLAG(fp, bool,         tcp_fastopen,  false,   'X', "Enable TCP fastopen");
+        DEFINE_FLAG(fp, int,          source_port,  -1,        0,  "Sender (source) data port. First data stream will use this port, each next stream will use port one larger than previous one. When not specified, kernel assigns free source ports.");
 #ifndef NO_LIBNUMA
         DEFINE_FLAG(fp, bool,         pin_numa,       false,  'N', "Pin threads to CPU cores");
 #endif

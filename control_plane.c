@@ -203,6 +203,8 @@ static int ctrl_listen(const char *host, const char *port,
                 }
                 set_reuseport(fd_listen, cb);
                 set_reuseaddr(fd_listen, 1, cb);
+                if (opts->freebind)
+                        set_freebind(fd_listen, cb);
                 if (bind(fd_listen, rp->ai_addr, rp->ai_addrlen) == 0)
                         break;
                 PLOG_ERROR(cb, "bind");
@@ -340,7 +342,8 @@ void control_plane_start(struct control_plane *cp, struct addrinfo **ai)
                                              cp->opts, cp->cb);
                 LOG_INFO(cp->cb, "connected to control port");
         } else {
-                cp->ctrl_port = ctrl_listen(NULL, cp->opts->control_port, ai,
+                cp->ctrl_port = ctrl_listen(cp->opts->host,
+                                            cp->opts->control_port, ai,
                                             cp->opts, cp->cb);
                 LOG_INFO(cp->cb, "opened control port");
         }

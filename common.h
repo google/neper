@@ -115,6 +115,7 @@ struct addrinfo **parse_local_hosts(const struct options *opts, int n,
 void set_reuseport(int fd, struct callbacks *cb);
 void set_nonblocking(int fd, struct callbacks *cb);
 void set_reuseaddr(int fd, int on, struct callbacks *cb);
+void set_freebind(int fd, struct callbacks *cb);
 void set_debug(int fd, int onoff, struct callbacks *cb);
 void set_min_rto(int fd, int min_rto_ms, struct callbacks *cb);
 int procfile_int(const char *path, struct callbacks *cb);

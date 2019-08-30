@@ -53,6 +53,13 @@ void check_options_tcp(struct options *opts, struct callbacks *cb)
               "TCP_MIN_RTO must be positive.");
         CHECK(cb, opts->min_rto < (1U << 31) / 1000000,
               "TCP_MIN_RTO * 1,000,000 must be less than 2^31 (nanoseconds).");
+        CHECK(cb, opts->source_port == -1 || opts->local_hosts == NULL,
+              "localhosts may not be specified when specifying source_ports");
+        if (opts->source_port != -1) {
+                CHECK(cb, opts->source_port >= 1 && opts->source_port <= 0xFFFF,
+                        "Source ports need to be in the range of 1..0xFFFF. "
+                        "Best larger than 1024.");
+        }
 }
 
 void check_options_udp(struct options *opts, struct callbacks *cb)

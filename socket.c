@@ -211,6 +211,8 @@ static int socket_bind_listener(struct thread *t, struct addrinfo *ai)
         int s = socket_or_die(ai->ai_family, ai->ai_socktype, 0, t->cb);
         set_reuseport(s, t->cb);
         set_reuseaddr(s, 1, t->cb);
+        if (t->opts->freebind)
+                set_freebind(s, t->cb);
 #ifndef NO_LIBNUMA
         if (t->opts->pin_numa && t->index == 0
             && ai->ai_socktype == SOCK_STREAM)
@@ -231,7 +233,8 @@ void socket_listen(struct thread *t)
                 .ai_socktype = t->ai_socktype
         };
 
-        struct addrinfo *ai = getaddrinfo_or_die(NULL, opts->port, &hints, cb);
+        struct addrinfo *ai = getaddrinfo_or_die(opts->host, opts->port, &hints,
+                                                 cb);
         int port = atoi(opts->port);
         int i, n, s;
 
@@ -278,6 +281,17 @@ int socket_connect_one(struct thread *t, int flags)
         if (t->local_hosts) {
                 int i = (t->flow_first + t->flow_count) % t->num_local_hosts;
                 bind_or_die(s, t->local_hosts[i], t->cb);
+        } else if (t->opts->source_port > 0) {
+                int flow_idx = (t->flow_first + t->flow_count);
+                int port = flow_idx + t->opts->source_port;
+
+                struct sockaddr_in source;
+                source.sin_family = AF_INET;
+                source.sin_addr.s_addr = INADDR_ANY;
+                source.sin_port = htons(port);
+                if (bind(s, &source, sizeof(source))) {
+                        PLOG_FATAL(t->cb, "bind for source port");
+                }
         }
 
         /* If the server has multiple listen ports then use them round-robin. */
