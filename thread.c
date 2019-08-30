@@ -568,7 +568,10 @@ int run_main_thread(struct options *opts, struct callbacks *cb,
         free(ai);
         LOG_INFO(cb, "started worker threads");
 
+        /* rusage_start is now exposed to other threads  */
+        pthread_mutex_lock(&time_start_mutex);
         getrusage_enhanced(RUSAGE_SELF, &rusage_start); /* rusage start! */
+        pthread_mutex_unlock(&time_start_mutex);
         control_plane_wait_until_done(cp);
         getrusage_enhanced(RUSAGE_SELF, &rusage_end); /* rusage end! */
 
@@ -578,6 +581,8 @@ int run_main_thread(struct options *opts, struct callbacks *cb,
 
         PRINT(cb, "invalid_secret_count", "%d", control_plane_incidents(cp));
 
+        /* rusage_start and time_start were (are?) visible to other threads */
+        pthread_mutex_lock(&time_start_mutex);
         /* begin printing rusage */
         PRINT(cb, "time_start", "%ld.%09ld", time_start.tv_sec,
               time_start.tv_nsec);
@@ -599,6 +604,7 @@ int run_main_thread(struct options *opts, struct callbacks *cb,
         PRINT(cb, "nvcsw_end", "%ld", rusage_end.ru_nvcsw);
         PRINT(cb, "nivcsw_start", "%ld", rusage_start.ru_nivcsw);
         PRINT(cb, "nivcsw_end", "%ld", rusage_end.ru_nivcsw);
+        pthread_mutex_unlock(&time_start_mutex);
         /* end printing rusage */
 
         int ret = fn->fn_report(ts);

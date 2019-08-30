@@ -86,6 +86,7 @@ struct options {
         bool reuseaddr;
         bool logtostderr;
         bool nonblocking;
+        bool freebind;
         bool tcp_fastopen;
         bool skip_rx_copy;
         double interval;
@@ -94,6 +95,7 @@ struct options {
         const char *host;
         const char *control_port;
         const char *port;
+        int source_port; /* Be aware: undefined in all udp_ variants! */
         const char *all_samples;
         const char secret[32]; /* includes test name */
 
