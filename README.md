@@ -38,7 +38,7 @@ Table of contents:
 ## Install
 
 Currently neper consists of five binaries, `tcp_rr` and `tcp_stream` and
-`tcp_crr` and `udp_rr` and `udp_stream, corresponding to five workloads.
+`tcp_crr` and `udp_rr` and `udp_stream`, corresponding to five workloads.
 
 ## Basic usage
 
