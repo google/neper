@@ -275,9 +275,6 @@ static int get_cpuset(cpu_set_t *cpuset, struct callbacks *cb)
                 PLOG_FATAL(cb, "calloc allowed_cores");
 
         for (i = 0; i < n; i++) {
-                LOG_INFO(cb, "%d\t%d\t%d\t%d\t%d", cpus[i].processor,
-                         cpus[i].physical_id, cpus[i].siblings, cpus[i].core_id,
-                         cpus[i].cpu_cores);
                 if (CPU_ISSET(cpus[i].processor, &allowed_cpus)) {
                         CPU_ZERO(&cpuset[j]);
                         CPU_SET(cpus[i].processor, &cpuset[j]);
