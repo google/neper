@@ -98,6 +98,7 @@ struct options {
         int source_port; /* Be aware: undefined in all udp_ variants! */
         const char *all_samples;
         const char secret[32]; /* includes test name */
+        bool async_connect;
 
         /* tcp_stream */
         bool enable_read;

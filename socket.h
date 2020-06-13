@@ -22,7 +22,6 @@ struct thread;
 void socket_listen(struct thread *);
 
 int  socket_connect_one(struct thread *, int flags);
-void socket_connect_all_sync(struct thread *);
-void socket_connect_all_async(struct thread *);
+void socket_connect_all(struct thread *);
 
 #endif
