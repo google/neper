@@ -312,20 +312,11 @@ int socket_connect_one(struct thread *t, int flags)
         return s;
 }
 
-void socket_connect_all_sync(struct thread *t)
+void socket_connect_all(struct thread *t)
 {
-        int i;
+        int i, flags = t->opts->async_connect ? SOCK_NONBLOCK : 0;
         for (i = 0; i < t->flow_limit; i++) {
-                int s = socket_connect_one(t, 0);
-                t->fn->fn_flow_init(t, s);
-        }
-}
-
-void socket_connect_all_async(struct thread *t)
-{
-        int i;
-        for (i = 0; i < t->flow_limit; i++) {
-                int s = socket_connect_one(t, SOCK_NONBLOCK);
+                int s = socket_connect_one(t, flags);
                 t->fn->fn_flow_init(t, s);
         }
 }

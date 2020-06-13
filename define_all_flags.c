@@ -112,6 +112,7 @@ struct flags_parser *add_flags_tcp_rr(struct flags_parser *fp)
 {
         /* Define flags specialized to only TCP_RR */
         DEFINE_FLAG(fp, unsigned long, delay,           0,       'D', "Nanosecond delay between each send()/write()");
+        DEFINE_FLAG(fp, bool,          async_connect,   false,   0,  "use non blocking connect");
 
         /* Return the updated fp */
         return (fp);
@@ -120,6 +121,7 @@ struct flags_parser *add_flags_tcp_rr(struct flags_parser *fp)
 struct flags_parser *add_flags_tcp_crr(struct flags_parser *fp)
 {
         /* Define flags specialized to only TCP_CRR */
+        DEFINE_FLAG(fp, bool,          async_connect,   true,   0,  "use non blocking connect (default true for historical backward compatibility)");
 
         /* Return the updated fp */
         return (fp);
@@ -134,6 +136,7 @@ struct flags_parser *add_flags_tcp_stream(struct flags_parser *fp)
         DEFINE_FLAG(fp, bool,          enable_read,     false,   'r', "Read from flows? enabled by default for the server");
         DEFINE_FLAG(fp, bool,          enable_write,    false,   'w', "Write to flows? Enabled by default for the client");
         DEFINE_FLAG(fp, bool,          enable_tcp_maerts,    false,   'M', "Enables TCP_MAERTS test (server writes and client reads). It overrides enable_read, and enable_write");
+        DEFINE_FLAG(fp, bool,          async_connect,   false,   0,  "use non blocking connect");
 
         /* Return the updated fp */
         return (fp);

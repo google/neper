@@ -20,7 +20,7 @@
 #include "thread.h"
 
 static const struct neper_fn client_fn = {
-        .fn_loop_init = socket_connect_all_sync,
+        .fn_loop_init = socket_connect_all,
         .fn_flow_init = rr_flow_init,
         .fn_report    = rr_report_stats,
         .fn_type      = SOCK_STREAM
