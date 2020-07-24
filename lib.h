@@ -95,7 +95,7 @@ struct options {
         const char *host;
         const char *control_port;
         const char *port;
-        int source_port; /* Be aware: undefined in all udp_ variants! */
+        int source_port;
         const char *all_samples;
         const char secret[32]; /* includes test name */
         bool async_connect;
