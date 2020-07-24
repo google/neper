@@ -32,6 +32,7 @@ struct flags_parser *add_flags_common(struct flags_parser *fp)
         DEFINE_FLAG(fp, int,          num_clients,   1,        0,  "Number of clients");
         DEFINE_FLAG(fp, int,          listen_backlog, 128,     0,  "Backlog size for listen()");
         DEFINE_FLAG(fp, int,          suicide_length, 0,      's', "Suicide length in seconds");
+        DEFINE_FLAG(fp, int,          source_port,  -1,        0,  "Sender (source) data port. First data stream will use this port, each next stream will use port one larger than previous one. When not specified, kernel assigns free source ports.");
         DEFINE_FLAG(fp, bool,         stime_use_proc,false,   'S', "Use global system+IRQ+SoftIRQ time from /proc/stat in place of getrusage ru_stime value. Should only be used on otherwise idle systems or with high workloads!");
         DEFINE_FLAG(fp, bool,         ipv4,          false,   '4', "Set desired address family to AF_INET");
         DEFINE_FLAG(fp, bool,         ipv6,          false,   '6', "Set desired address family to AF_INET6");
@@ -62,7 +63,6 @@ struct flags_parser *add_flags_tcp(struct flags_parser *fp)
         /* Define flags common to all TCP main programs */
         DEFINE_FLAG(fp, int,          num_ports,     1,        0,  "Number of server data ports");
         DEFINE_FLAG(fp, bool,         tcp_fastopen,  false,   'X', "Enable TCP fastopen");
-        DEFINE_FLAG(fp, int,          source_port,  -1,        0,  "Sender (source) data port. First data stream will use this port, each next stream will use port one larger than previous one. When not specified, kernel assigns free source ports.");
 #ifndef NO_LIBNUMA
         DEFINE_FLAG(fp, bool,         pin_numa,       false,  'N', "Pin threads to CPU cores");
 #endif
