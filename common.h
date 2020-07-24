@@ -97,7 +97,7 @@ static inline double seconds_between(const struct timespec *a,
 /* Stats are computed wrong with 2 samples or less. Force a minimum value,
  * the larger the better (note, test length is at least 1).
  */
-static void adjust_interval(double *interval, int test_length)
+static inline void adjust_interval(double *interval, int test_length)
 {
         const int min_samples = 5;
 
