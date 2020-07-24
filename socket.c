@@ -285,13 +285,25 @@ int socket_connect_one(struct thread *t, int flags)
                 int flow_idx = (t->flow_first + t->flow_count);
                 int port = flow_idx + t->opts->source_port;
 
-                struct sockaddr_in source;
-                source.sin_family = AF_INET;
-                source.sin_addr.s_addr = INADDR_ANY;
-                source.sin_port = htons(port);
-                if (bind(s, &source, sizeof(source))) {
-                        PLOG_FATAL(t->cb, "bind for source port");
-                }
+		if (ai->ai_family == AF_INET) {
+			struct sockaddr_in source;
+
+			source.sin_family = AF_INET;
+			source.sin_addr.s_addr = INADDR_ANY;
+			source.sin_port = htons(port);
+			if (bind(s, &source, sizeof(source))) {
+				PLOG_FATAL(t->cb, "bind for source port");
+			}
+		} else {
+			struct sockaddr_in6 source;
+
+			source.sin6_family = AF_INET6;
+			source.sin6_addr = in6addr_any;
+			source.sin6_port = htons(port);
+			if (bind(s, &source, sizeof(source))) {
+				PLOG_FATAL(t->cb, "bind for source port");
+			}
+		}
         }
 
         /* If the server has multiple listen ports then use them round-robin. */
