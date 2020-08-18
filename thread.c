@@ -503,6 +503,7 @@ static void free_worker_threads(int num_threads, struct thread *t)
                 free(t[i].rl.pending_flows);
                 free(t[i].f_mbuf);
                 free(t[i].flows);
+                free(t[i].histo_factory);
         }
         free(t);
 }
