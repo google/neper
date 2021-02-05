@@ -124,9 +124,6 @@ static struct neper_stat *rr_latency_init(struct flow *f)
         const struct thread *t = flow_thread(f);
         int size;
 
-        if (!t->opts->client)
-                return NULL;
-
         struct neper_histo *histo = t->histo_factory->create(t->histo_factory);
 
         size = sizeof(struct rr_snap_opaque) + t->percentiles * sizeof(double);
@@ -387,9 +384,16 @@ static void crr_client_state_0(struct flow *f, uint32_t events)
 static void rr_server_state_2(struct flow *f, uint32_t events)
 {
         struct rr_state *rr = flow_opaque(f);
+        struct thread *t = flow_thread(f);
+        struct neper_stat *stat = flow_stat(f);
+        struct neper_histo *histo = stat->histo(stat);
 
-        if (rr_do_send(f, events, rr->rr_send))
+        if (rr_do_send(f, events, rr->rr_send)) {
+                /* rr server has no meaningful latency to measure. */
+                histo->event(histo, 0.0);
+                stat->event(t, stat, 1, false, rr_snapshot);
                 flow_mod(f, rr_server_state_0, EPOLLIN, false);
+        }
 }
 
 static void rr_server_state_1(struct flow *f)
@@ -485,9 +489,6 @@ int rr_report_stats(struct thread *tinfo)
         struct callbacks *cb = tinfo[0].cb;
         FILE *csv = NULL;
         int i;
-
-        if (!opts->client)
-                return 0;
 
         int num_events = thread_stats_events(tinfo);
         PRINT(cb, "num_transactions", "%d", num_events);
