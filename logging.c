@@ -202,16 +202,31 @@ static void logtostderr(void *logger)
         g_logtostderr = true;
 }
 
+static void logtonull()
+{
+        log_file = fopen("/dev/null", "w");
+        if (!log_file) {
+                log_file = stderr;
+                log_error(NULL, __FILE__, __LINE__, __func__,
+                          "Can't open /dev/null for logging, "
+                          "log to stderr instead: %s", strerror(errno));
+        }
+}
+
 void logging_init(struct callbacks *cb, int argc, char **argv)
 {
 	/*
-	 * Quickly scan options, if we have --logtostderr we do not
-	 * need to create a logfile.
+	 * Quickly scan options, if we have --logtostderr or --nolog,
+	 * no need to create a logfile.
 	 */
 	int i;
 	for (i = 1; i < argc; i++) {
 		if (!strcmp(argv[i], "--logtostderr")) {
 			log_file = stderr;
+			break;
+		}
+		if (!strcmp(argv[i], "--nolog")) {
+			logtonull();
 			break;
 		}
 	}
