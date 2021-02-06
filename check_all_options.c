@@ -20,6 +20,8 @@
 void check_options_common(struct options *opts, struct callbacks *cb)
 {
         /* Check the options shared by ALL main programs */
+        CHECK(cb, !(opts->logtostderr && opts->nolog),
+              "--logtostderr and --nolog are mutually exclusive.");
         CHECK(cb, opts->num_flows >= 1,
               "There must be at least 1 flow.");
         CHECK(cb, opts->num_threads >= 1,

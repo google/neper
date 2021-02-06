@@ -85,6 +85,7 @@ struct options {
 #endif
         bool reuseaddr;
         bool logtostderr;
+        bool nolog;
         bool nonblocking;
         bool freebind;
         bool tcp_fastopen;
