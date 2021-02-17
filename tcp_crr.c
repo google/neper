@@ -36,5 +36,8 @@ static const struct neper_fn server_fn = {
 int tcp_crr(struct options *opts, struct callbacks *cb)
 {
         const struct neper_fn *fn = opts->client ? &client_fn : &server_fn;
+        /* tcp_crr server doesn't collect stats, as it uses too much memory. */
+        if (!opts->client)
+                opts->nostats = true;
         return run_main_thread(opts, cb, fn);
 }

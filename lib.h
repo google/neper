@@ -116,6 +116,9 @@ struct options {
         int request_size;
         int response_size;
         struct percentiles percentiles;
+
+        /* tcp_crr */
+        bool nostats;
 };
 
 #ifdef __cplusplus
