@@ -110,7 +110,7 @@ int stream_report(struct thread *ts)
                 return 0;
 
         if (path)
-                csv = print_header(path, "bytes_read", "\n", cb);
+                csv = print_header(path, "bytes_read,bytes_read/s", "\n", cb);
 
         struct neper_coef *coef = neper_stat_print(ts, csv, NULL);
         if (!coef) {

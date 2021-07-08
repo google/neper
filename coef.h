@@ -37,6 +37,7 @@ struct neper_coef {
         double (*correlation)(const struct neper_coef *);
         double (*thruput)(const struct neper_coef *);
         const struct timespec *(*end)(const struct neper_coef *);
+        const uint64_t (*coef_val)(const struct neper_coef *coef);
         void (*fini)(struct neper_coef *);
 };
 

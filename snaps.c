@@ -41,10 +41,12 @@ static double neper_snap_cmp(const struct neper_snap *a,
         return seconds_between(&b->timespec, &a->timespec);
 }
 
-void neper_snap_print(const struct neper_snap *snap, FILE *csv, const char *nl)
+void neper_snap_print(const struct neper_snap *snap, FILE *csv,
+                      double raw_thruput, const char *nl)
 {
-        fprintf(csv, "%ld.%09ld,%zd",
-                snap->timespec.tv_sec, snap->timespec.tv_nsec, snap->things);
+        fprintf(csv, "%ld.%09ld,%zd,%.2f",
+                snap->timespec.tv_sec, snap->timespec.tv_nsec, snap->things,
+                raw_thruput);
         print_rusage(csv, snap->rusage, nl);
 }
 

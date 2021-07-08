@@ -119,27 +119,41 @@ struct neper_coef *neper_stat_print(struct thread *ts, FILE *csv,
         struct neper_coef *coef = neper_coef();
         uint64_t current_total = 0;
         struct neper_stat *stat;
+        uint64_t prev_total = 0;
+        const struct timespec *prev_ts;
 
         while ((stat = pq->deq(pq))) {
                 struct stat_impl *impl = (void *)stat;
                 struct neper_snaps *snaps = impl->snaps;
                 const struct neper_snap *snap = snaps->iter_next(snaps);
 
+                current_total += snap->things - impl->scratch;
+                impl->scratch = snap->things;
                 if (csv) {
                         struct thread *t = &ts[impl->thread_index];
+                        double raw_thruput;
 
                         fprintf(csv, "%d,%d,", t->index, impl->flow_index);
 
+                        if (prev_total) {
+                                double delta = current_total - prev_total;
+                                double seconds = seconds_between(prev_ts, &snap->timespec);
+
+                                if (seconds)
+                                        raw_thruput = delta / seconds;
+                                else
+                                        raw_thruput = 0;
+                        }
+
+                        prev_total = current_total;
+                        prev_ts = &snap->timespec;
                         if (fn) {
-                                neper_snap_print(snap, csv, "");
+                                neper_snap_print(snap, csv, raw_thruput, "");
                                 fn(t, impl->flow_index, snap, csv);
                         } else {
-                                neper_snap_print(snap, csv, "\n");
+                                neper_snap_print(snap, csv, raw_thruput, "\n");
                         }
                 }
-
-                current_total += snap->things - impl->scratch;
-                impl->scratch = snap->things;
 
                 coef->event(coef, &snap->timespec, current_total);
 
