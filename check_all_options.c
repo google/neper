@@ -51,10 +51,6 @@ void check_options_common(struct options *opts, struct callbacks *cb)
 void check_options_tcp(struct options *opts, struct callbacks *cb)
 {
         /* Check the options shared by all TCP_* main programs */
-        CHECK(cb, opts->min_rto >= 0,
-              "TCP_MIN_RTO must be positive.");
-        CHECK(cb, opts->min_rto < (1U << 31) / 1000000,
-              "TCP_MIN_RTO * 1,000,000 must be less than 2^31 (nanoseconds).");
         CHECK(cb, opts->source_port == -1 || opts->local_hosts == NULL,
               "localhosts may not be specified when specifying source_ports");
         if (opts->source_port != -1) {
@@ -67,8 +63,6 @@ void check_options_tcp(struct options *opts, struct callbacks *cb)
 void check_options_udp(struct options *opts, struct callbacks *cb)
 {
         /* Check the options shared by all UDP_* main programs */
-        /* Always set min_rto to 0 so that we don't try to set it. */
-        opts->min_rto = 0;
 }
 
 void check_options_rr(struct options *opts, struct callbacks *cb)

@@ -49,8 +49,6 @@ static void socket_init_not_established(struct thread *t, int s)
                 uint32_t m = opts->max_pacing_rate;
                 setsockopt(s, SOL_SOCKET, SO_MAX_PACING_RATE, &m, sizeof(m));
         }
-        if (opts->min_rto)
-                set_min_rto(s, opts->min_rto, cb);
         if (opts->reuseaddr)
                 set_reuseaddr(s, 1, cb);
         if (opts->client) {

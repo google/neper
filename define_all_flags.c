@@ -25,7 +25,6 @@ struct flags_parser *add_flags_common(struct flags_parser *fp)
         /* Define flags common to all main programs */
 
         DEFINE_FLAG(fp, int,          magic,         42,       0,  "Magic number used by control connections");
-        DEFINE_FLAG(fp, int,          min_rto,       0,        0,  "TCP_MIN_RTO (ms)");
         DEFINE_FLAG(fp, int,          maxevents,     1000,     0,  "Number of epoll events per epoll_wait() call");
         DEFINE_FLAG(fp, int,          num_flows,     1,       'F', "Total number of flows");
         DEFINE_FLAG(fp, int,          num_threads,   1,       'T', "Number of threads");

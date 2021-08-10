@@ -62,7 +62,6 @@ struct callbacks {
 
 struct options {
         int magic;
-        int min_rto;
         int maxevents;
         int num_flows;
         int num_threads;
