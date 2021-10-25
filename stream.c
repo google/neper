@@ -59,6 +59,24 @@ void stream_handler(struct flow *f, uint32_t events)
         void *mbuf = flow_mbuf(f);
         int fd = flow_fd(f);
         const struct options *opts = t->opts;
+        /*
+         * The actual size can be calculated with CMSG_SPACE(sizeof(struct X)),
+         * where X is unnamed structs defined in kernel source tree based on IP versions.
+         *      net/ipv4/ip_sockglue.c:ip_recv_error()
+         *      net/ipv6/datagram.c:ipv6_recv_error()
+         * For IPv6, it's
+         *      struct {
+         *              struct sock_extended_err ee;            // 16
+         *              struct sockaddr_in6      offender;      // 28
+         *      } errhdr;
+         * As of Linux 5.15, CMSG_SPACE() is 16 + 16 + 28, rounds up to 64.
+         * Choosing 128 should last for a while.
+         */
+        char control[128];
+        struct msghdr msg = {
+                .msg_control = control,
+                .msg_controllen = sizeof(control),
+        };
         ssize_t n;
 
         if (events & (EPOLLHUP | EPOLLRDHUP))
@@ -84,10 +102,10 @@ void stream_handler(struct flow *f, uint32_t events)
 
         if (events & EPOLLOUT)
                 do {
-                        n = write(fd, mbuf, opts->buffer_size);
+                        n = send(fd, mbuf, opts->buffer_size, opts->send_flags);
                         if (n == -1) {
                                 if (errno != EAGAIN)
-                                        PLOG_ERROR(t->cb, "write");
+                                        PLOG_ERROR(t->cb, "send");
                                 return;
                         }
                         if (opts->delay) {
@@ -97,6 +115,25 @@ void stream_handler(struct flow *f, uint32_t events)
                                 nanosleep(&ts, NULL);
                         }
                 } while (opts->edge_trigger);
+
+        if (events & EPOLLERR) {
+                do {
+                        n = recvmsg(fd, &msg, MSG_ERRQUEUE);
+                } while(n == -1 && errno == EINTR);
+                if (n == -1) {
+                        if (errno != EAGAIN)
+                                PLOG_ERROR(t->cb, "recvmsg() on ERRQUEUE failed");
+                        return;
+                }
+                /*
+                 * No need to process anything for the purpose of benchmarking,
+                 * as flow_mbuf(f) won't be released before flow is terminated.
+                 *
+                 * Maybe examine sock_extended_err.ee_code to find out whether
+                 * zerocopy actually happened. i.e. SO_EE_CODE_ZEROCOPY_COPIED
+                 * e.g. Linux kernel tools/testing/selftests/net/msg_zerocopy.c
+                 */
+        }
 }
 
 int stream_report(struct thread *ts)

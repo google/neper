@@ -187,6 +187,12 @@ void set_reuseaddr(int fd, int on, struct callbacks *cb)
                 PLOG_ERROR(cb, "setsockopt(SO_REUSEADDR)");
 }
 
+void set_zerocopy(int fd, int on, struct callbacks *cb)
+{
+        if (setsockopt(fd, SOL_SOCKET, SO_ZEROCOPY, &on, sizeof(on)))
+                PLOG_ERROR(cb, "setsockopt(SO_ZEROCOPY)");
+}
+
 void set_debug(int fd, int onoff, struct callbacks *cb)
 {
         if (setsockopt(fd, SOL_SOCKET, SO_DEBUG, &onoff, sizeof(onoff)))

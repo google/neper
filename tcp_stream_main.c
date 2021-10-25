@@ -53,6 +53,8 @@ int main(int argc, char **argv)
 
         if (opts.skip_rx_copy)
                 opts.recv_flags = MSG_TRUNC;
+        if (opts.zerocopy)
+                opts.send_flags = MSG_ZEROCOPY;
 
         flags_parser_dump(fp);
         flags_parser_destroy(fp);

@@ -299,12 +299,14 @@ the stdout summary.
     epoll_trigger
     delay
     throughput_opt
+    zerocopy
 
 ### `udp_stream` options
 
     reuseaddr
     delay
     throughput_opt
+    zerocopy
 
 ## Output format
 
