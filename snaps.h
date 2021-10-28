@@ -39,7 +39,8 @@ struct neper_snap {
         char opaque[0];
 };
 
-void neper_snap_print(const struct neper_snap *, FILE *, const char *nl);
+void neper_snap_print(const struct neper_snap *, FILE *, double raw_thruput,
+                      const char *nl);
 
 /*
  * The neper_snaps (note: plural) struct is a container for all of the

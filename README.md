@@ -88,7 +88,6 @@ Let's start the server process first:
     test_length=10
     num_threads=1
     num_flows=1
-    min_rto=0
     help=0
     total_run_time=10
     *(process waiting here)*
@@ -259,7 +258,6 @@ To have netperf `TCP_MAERTS` test, pass `-M` which overrides `-r` and `-w`.
 ### TCP options
 
     max_pacing_rate
-    min_rto
     listen_backlog
 
 ### `tcp_rr` and `tcp_crr` options
@@ -301,12 +299,14 @@ the stdout summary.
     epoll_trigger
     delay
     throughput_opt
+    zerocopy
 
 ### `udp_stream` options
 
     reuseaddr
     delay
     throughput_opt
+    zerocopy
 
 ## Output format
 

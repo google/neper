@@ -187,14 +187,10 @@ void set_reuseaddr(int fd, int on, struct callbacks *cb)
                 PLOG_ERROR(cb, "setsockopt(SO_REUSEADDR)");
 }
 
-void set_min_rto(int fd, int min_rto_ms, struct callbacks *cb)
+void set_zerocopy(int fd, int on, struct callbacks *cb)
 {
-        int min_rto = min_rto_ms * 1000 * 1000;  /* in nanoseconds */
-#ifndef TCP_MIN_RTO
-#define TCP_MIN_RTO 1713
-#endif
-        if (setsockopt(fd, SOL_TCP, TCP_MIN_RTO, &min_rto, sizeof(min_rto)))
-                PLOG_ERROR(cb, "setsockopt(TCP_MIN_RTO)");
+        if (setsockopt(fd, SOL_SOCKET, SO_ZEROCOPY, &on, sizeof(on)))
+                PLOG_ERROR(cb, "setsockopt(SO_ZEROCOPY)");
 }
 
 void set_debug(int fd, int onoff, struct callbacks *cb)

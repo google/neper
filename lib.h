@@ -62,7 +62,6 @@ struct callbacks {
 
 struct options {
         int magic;
-        int min_rto;
         int maxevents;
         int num_flows;
         int num_threads;
@@ -73,6 +72,7 @@ struct options {
         int listen_backlog;
         int suicide_length;
         int recv_flags;
+        int send_flags;
         bool stime_use_proc; /* Enable use of /proc/stat values for stime */
         bool ipv4;
         bool ipv6;
@@ -90,6 +90,7 @@ struct options {
         bool freebind;
         bool tcp_fastopen;
         bool skip_rx_copy;
+        bool zerocopy;
         double interval;
         long long max_pacing_rate;
         const char *local_hosts;

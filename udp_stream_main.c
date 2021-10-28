@@ -46,6 +46,9 @@ int main(int argc, char **argv)
         else
                 opts.enable_read = true;
 
+        if (opts.zerocopy)
+                opts.send_flags = MSG_ZEROCOPY;
+
         flags_parser_dump(fp);
         flags_parser_destroy(fp);
 

@@ -509,7 +509,8 @@ int rr_report_stats(struct thread *tinfo)
         sum->fini(sum);
 
         if (path) {
-                csv = print_header(path, "transactions", "", cb);
+                csv = print_header(path, "transactions,transactions/s",
+                                   "", cb);
                 print_latency_header(csv, &opts->percentiles);
         }
 

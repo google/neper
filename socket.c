@@ -49,10 +49,12 @@ static void socket_init_not_established(struct thread *t, int s)
                 uint32_t m = opts->max_pacing_rate;
                 setsockopt(s, SOL_SOCKET, SO_MAX_PACING_RATE, &m, sizeof(m));
         }
-        if (opts->min_rto)
-                set_min_rto(s, opts->min_rto, cb);
         if (opts->reuseaddr)
                 set_reuseaddr(s, 1, cb);
+        if (opts->freebind)
+                set_freebind(s, cb);
+        if (opts->zerocopy)
+                set_zerocopy(s, 1, cb);
         if (opts->client) {
                 struct linger l;
                 l.l_onoff = 1;
@@ -211,8 +213,6 @@ static int socket_bind_listener(struct thread *t, struct addrinfo *ai)
         int s = socket_or_die(ai->ai_family, ai->ai_socktype, 0, t->cb);
         set_reuseport(s, t->cb);
         set_reuseaddr(s, 1, t->cb);
-        if (t->opts->freebind)
-                set_freebind(s, t->cb);
 #ifndef NO_LIBNUMA
         if (t->opts->pin_numa && t->index == 0
             && ai->ai_socktype == SOCK_STREAM)
@@ -278,10 +278,7 @@ int socket_connect_one(struct thread *t, int flags)
 
         int s = socket_or_die(ai->ai_family, t->ai_socktype | flags, 0, t->cb);
 
-        if (t->local_hosts) {
-                int i = (t->flow_first + t->flow_count) % t->num_local_hosts;
-                bind_or_die(s, t->local_hosts[i], t->cb);
-        } else if (t->opts->source_port > 0) {
+        if (!t->local_hosts && t->opts->source_port > 0) {
                 int flow_idx = (t->flow_first + t->flow_count);
                 int port = flow_idx + t->opts->source_port;
 
@@ -319,6 +316,10 @@ int socket_connect_one(struct thread *t, int flags)
         }
 
         socket_init_not_established(t, s);
+        if (t->local_hosts) {
+                int i = (t->flow_first + t->flow_count) % t->num_local_hosts;
+                bind_or_die(s, t->local_hosts[i], t->cb);
+        }
         connect_or_die(s, ai, t->cb);
         socket_init_established(t, s);
         return s;

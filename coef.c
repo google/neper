@@ -73,6 +73,13 @@ static const struct timespec *coef_end(const struct neper_coef *coef)
         return impl->time_N;
 }
 
+static const uint64_t coef_val(const struct neper_coef *coef)
+{
+        const struct coef_impl *impl = (void *)coef;
+
+        return impl->val_N;
+}
+
 static void coef_fini(struct neper_coef *coef)
 {
         struct coef_impl *impl = (void *)coef;
@@ -90,6 +97,7 @@ struct neper_coef *neper_coef(void)
         coef->correlation = coef_correlation;
         coef->thruput     = coef_thruput;
         coef->end         = coef_end;
+        coef->coef_val    = coef_val;
         coef->fini        = coef_fini;
 
         return coef;

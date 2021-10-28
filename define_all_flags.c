@@ -25,7 +25,6 @@ struct flags_parser *add_flags_common(struct flags_parser *fp)
         /* Define flags common to all main programs */
 
         DEFINE_FLAG(fp, int,          magic,         42,       0,  "Magic number used by control connections");
-        DEFINE_FLAG(fp, int,          min_rto,       0,        0,  "TCP_MIN_RTO (ms)");
         DEFINE_FLAG(fp, int,          maxevents,     1000,     0,  "Number of epoll events per epoll_wait() call");
         DEFINE_FLAG(fp, int,          num_flows,     1,       'F', "Total number of flows");
         DEFINE_FLAG(fp, int,          num_threads,   1,       'T', "Number of threads");
@@ -101,6 +100,7 @@ struct flags_parser *add_flags_stream(struct flags_parser *fp)
         DEFINE_FLAG(fp, int,           test_length,     10,      'l', "Test length in seconds");
         DEFINE_FLAG(fp, bool,          edge_trigger,    false,   'E', "Edge-triggered epoll");
         DEFINE_FLAG(fp, bool,          reuseaddr,       false,   'R', "Use SO_REUSEADDR on sockets");
+        DEFINE_FLAG(fp, bool,          zerocopy,        false,   'Z', "Set MSG_ZEROCOPY when sending");
         DEFINE_FLAG(fp, const struct rate_conversion *, throughput_opt, neper_units_mb_pointer_hack, 0, "Units to display for throughput");
         DEFINE_FLAG_PARSER(fp,                          throughput_opt, parse_unit);
         DEFINE_FLAG_PRINTER(fp,                         throughput_opt, print_unit);
