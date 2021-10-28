@@ -18,6 +18,7 @@
 
 #include <ctype.h>
 #include <getopt.h>
+#include <limits.h>
 
 #include "common.h"
 #include "version.h"
@@ -271,7 +272,7 @@ void flags_parser_run(struct flags_parser *fp, int argc, char **argv)
                         exit(1);
                 }
                 i = c - LONG_OPTION_START;
-                if (isgraph(c)) {
+                if (c <= UCHAR_MAX && isgraph(c)) {
                         for (i = 0; i < num_flags; i++) {
                                 if (c == flags[i].short_name)
                                         break;
