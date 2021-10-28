@@ -106,7 +106,11 @@ static int connect_any(const char *host, const char *port, struct addrinfo **ai,
                        struct options *opts, struct callbacks *cb)
 {
         struct addrinfo *result, *rp;
-        int sfd, allowed_retry = 30;
+        int sfd, num_local_hosts, allowed_retry = 30;
+
+        num_local_hosts = count_local_hosts(opts);
+        struct addrinfo** local_hosts =
+                parse_local_hosts(opts, num_local_hosts, cb);
 
         const struct addrinfo hints = {
                 .ai_flags    = 0,
@@ -129,6 +133,11 @@ retry:
                         PLOG_ERROR(cb, "socket");
                         continue;
                 }
+                if (opts->freebind)
+                        set_freebind(sfd, cb);
+                /* Bind control socket to first local host if provided. */
+                if (local_hosts)
+                        bind_or_die(sfd, local_hosts[0], cb);
                 if (try_connect(sfd, rp->ai_addr, rp->ai_addrlen) == 0)
                         break;
                 PLOG_ERROR(cb, "connect");
