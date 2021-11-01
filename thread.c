@@ -252,7 +252,7 @@ static int get_cpuset(cpu_set_t *cpuset, struct callbacks *cb)
         cpu_set_t allowed_cpus;
         int len = 0;
         char *allowed_cores;
-        int start = -1, end;
+        int start = -1, end = -1;
 
         CPU_ZERO(&allowed_cpus);
         if (sched_getaffinity(0, sizeof(allowed_cpus), &allowed_cpus))

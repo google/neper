@@ -131,7 +131,7 @@ struct neper_coef *neper_stat_print(struct thread *ts, FILE *csv,
                 impl->scratch = snap->things;
                 if (csv) {
                         struct thread *t = &ts[impl->thread_index];
-                        double raw_thruput;
+                        double raw_thruput = 0;
 
                         fprintf(csv, "%d,%d,", t->index, impl->flow_index);
 
