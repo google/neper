@@ -237,6 +237,7 @@ To have netperf `TCP_MAERTS` test, pass `-M` which overrides `-r` and `-w`.
     local_hosts
     control_port
     port
+    mark
 
 ### Workload options
 

@@ -34,7 +34,7 @@
 #endif
 
 /*
- * Set sockopts that has to be set before the socket is stablished and
+ * Set sockopts that has to be set before the socket is established and
  * are common to all data sockets.
  */
 
@@ -49,6 +49,8 @@ static void socket_init_not_established(struct thread *t, int s)
                 uint32_t m = opts->max_pacing_rate;
                 setsockopt(s, SOL_SOCKET, SO_MAX_PACING_RATE, &m, sizeof(m));
         }
+	if (opts->mark)
+		set_mark(s, opts->mark, cb);
         if (opts->reuseaddr)
                 set_reuseaddr(s, 1, cb);
         if (opts->freebind)
