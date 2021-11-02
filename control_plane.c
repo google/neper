@@ -106,7 +106,7 @@ static int connect_any(const char *host, const char *port, struct addrinfo **ai,
                        struct options *opts, struct callbacks *cb)
 {
         struct addrinfo *result, *rp;
-        int sfd, num_local_hosts, allowed_retry = 30;
+        int sfd = -1, num_local_hosts, allowed_retry = 30;
 
         num_local_hosts = count_local_hosts(opts);
         struct addrinfo** local_hosts =

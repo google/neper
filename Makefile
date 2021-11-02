@@ -56,22 +56,22 @@ udp_rr-objs := udp_rr_main.o udp_rr.o rr.o $(lib)
 
 udp_stream-objs := udp_stream_main.o udp_stream.o stream.o $(lib)
 
-ext-libs := -lm -lpthread -lrt
+ext-libs := -lm -lrt -lpthread
 
 tcp_rr: $(tcp_rr-objs)
-	$(CC) -o $@ $^ $(ext-libs)
+	$(CC) $(LDFLAGS) -o $@ $^ $(ext-libs)
 
 tcp_stream: $(tcp_stream-objs)
-	$(CC) -o $@ $^ $(ext-libs)
+	$(CC) $(LDFLAGS) -o $@ $^ $(ext-libs)
 
 tcp_crr: $(tcp_crr-objs)
-	$(CC) -o $@ $^ $(ext-libs)
+	$(CC) $(LDFLAGS) -o $@ $^ $(ext-libs)
 
 udp_rr: $(udp_rr-objs)
-	$(CC) -o $@ $^ $(ext-libs)
+	$(CC) $(LDFLAGS) -o $@ $^ $(ext-libs)
 
 udp_stream: $(udp_stream-objs)
-	$(CC) -o $@ $^ $(ext-libs)
+	$(CC) $(LDFLAGS) -o $@ $^ $(ext-libs)
 
 binaries: tcp_rr tcp_stream tcp_crr udp_rr udp_stream
 

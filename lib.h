@@ -73,6 +73,7 @@ struct options {
         int suicide_length;
         int recv_flags;
         int send_flags;
+        int mark;
         bool stime_use_proc; /* Enable use of /proc/stat values for stime */
         bool ipv4;
         bool ipv6;

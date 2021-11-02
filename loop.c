@@ -20,8 +20,6 @@
 #include "socket.h"
 #include "thread.h"
 
-static const int TEN_MILLISECONDS = 10;
-
 static void handler_stop(struct flow *f, uint32_t events)
 {
         struct thread *t = flow_thread(f);

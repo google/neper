@@ -214,6 +214,11 @@ void set_freebind(int fd, struct callbacks *cb) {
                 PLOG_ERROR(cb, "setsockopt(FREEBIND)");
 }
 
+void set_mark(int fd, int mark, struct callbacks *cb) {
+        if (setsockopt(fd, SOL_SOCKET, SO_MARK, &mark, sizeof(mark)))
+                PLOG_ERROR(cb, "setsockopt(MARK)");
+}
+
 int procfile_int(const char *path, struct callbacks *cb)
 {
         int result = 0;
