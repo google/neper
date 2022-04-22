@@ -92,6 +92,7 @@ struct options {
         bool tcp_fastopen;
         bool skip_rx_copy;
         bool zerocopy;
+        bool time_wait;
         double interval;
         long long max_pacing_rate;
         const char *local_hosts;

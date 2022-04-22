@@ -57,7 +57,7 @@ static void socket_init_not_established(struct thread *t, int s)
                 set_freebind(s, cb);
         if (opts->zerocopy)
                 set_zerocopy(s, 1, cb);
-        if (opts->client) {
+        if (opts->client && !opts->time_wait) {
                 struct linger l;
                 l.l_onoff = 1;
                 l.l_linger = 0;
