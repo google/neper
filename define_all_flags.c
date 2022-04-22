@@ -54,6 +54,7 @@ struct flags_parser *add_flags_common(struct flags_parser *fp)
         DEFINE_FLAG(fp, const char *, all_samples,   NULL,    'A', "Print all samples? If yes, this is the output file name");
         DEFINE_FLAG_HAS_OPTIONAL_ARGUMENT(fp, all_samples);
         DEFINE_FLAG_PARSER(fp,        all_samples, parse_all_samples);
+        DEFINE_FLAG(fp, bool,         time_wait,     false,    0,  "Do not set SO_LINGER 0. Close gracefully. Active peer will enter TIME_WAIT state");
 
         /* Return the updated fp */
         return (fp);
