@@ -1,3 +1,5 @@
+*.csv
+*.log
 *.o
 tcp_crr
 tcp_rr

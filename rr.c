@@ -39,8 +39,6 @@
 
 #define NEPER_EPOLL_MASK (EPOLLHUP | EPOLLRDHUP | EPOLLERR)
 
-static const int MILLION = 1000000;
-
 typedef ssize_t (*rr_send_t)(struct flow *, const char *, size_t, int);
 typedef ssize_t (*rr_recv_t)(struct flow *, char *, size_t);
 
@@ -459,9 +457,8 @@ static void rr_print_snap(struct thread *t, int flow_index,
         if (snap && csv) {
                 const struct rr_snap_opaque *rso = (void *)&snap->opaque;
 
-                fprintf(csv, ",%f,%f,%f,%f",
-                        rso->min / MILLION, rso->mean / MILLION,
-                        rso->max / MILLION, rso->stddev / MILLION);
+                fprintf(csv, ",%.9f,%.9f,%.9f,%.9f",
+                        rso->min, rso->mean, rso->max, rso->stddev);
 
                 if (t->percentiles) {
                         const struct options *opts = t->opts;
@@ -469,8 +466,8 @@ static void rr_print_snap(struct thread *t, int flow_index,
 
                         for (i = 0; i < PER_INDEX_COUNT; i++)
                                 if (percentiles_chosen(&opts->percentiles, i))
-                                        fprintf(csv, ",%f",
-                                                rso->percentile[j++] / MILLION);
+                                        fprintf(csv, ",%.9f",
+                                                rso->percentile[j++]);
                 }
 
                 fprintf(csv, "\n");
