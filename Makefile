@@ -56,6 +56,8 @@ udp_rr-objs := udp_rr_main.o udp_rr.o rr.o $(lib)
 
 udp_stream-objs := udp_stream_main.o udp_stream.o stream.o $(lib)
 
+psp_stream-objs := psp_stream_main.o psp_stream.o stream.o psp_lib.o $(lib)
+
 ext-libs := -lm -lrt -lpthread
 
 tcp_rr: $(tcp_rr-objs)
@@ -73,7 +75,10 @@ udp_rr: $(udp_rr-objs)
 udp_stream: $(udp_stream-objs)
 	$(CC) $(LDFLAGS) -o $@ $^ $(ext-libs)
 
-binaries: tcp_rr tcp_stream tcp_crr udp_rr udp_stream
+psp_stream: $(psp_stream-objs)
+	$(CC) $(LDFLAGS) -o $@ $^ $(ext-libs)
+
+binaries: tcp_rr tcp_stream tcp_crr udp_rr udp_stream psp_stream
 
 clean:
-	rm -f *.o tcp_rr tcp_stream tcp_crr udp_rr udp_stream
+	rm -f *.o tcp_rr tcp_stream tcp_crr udp_rr udp_stream psp_stream

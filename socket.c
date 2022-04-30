@@ -257,6 +257,9 @@ void socket_listen(struct thread *t)
                         s = socket_bind_listener(t, ai);
                         socket_init_not_established(t, s);
                         listen_or_die(s, t->opts->listen_backlog, cb);
+                        if (t->fn->fn_post_listen) {
+                                t->fn->fn_post_listen(t, s, ai);
+                        }
                         args.fd = s;
                         flow_create(&args);
                         reset_port(ai, ++port, cb);
@@ -321,6 +324,9 @@ int socket_connect_one(struct thread *t, int flags)
         if (t->local_hosts) {
                 int i = (t->flow_first + t->flow_count) % t->num_local_hosts;
                 bind_or_die(s, t->local_hosts[i], t->cb);
+        }
+        if (t->fn->fn_pre_connect) {
+                t->fn->fn_pre_connect(t, s, ai);
         }
         connect_or_die(s, ai, t->cb);
         socket_init_established(t, s);

@@ -89,6 +89,14 @@ void *malloc_or_die(size_t size, struct callbacks *cb)
         return ptr;
 }
 
+void *realloc_or_die(void *ptr, size_t size, struct callbacks *cb)
+{
+        void *new_ptr = realloc(ptr, size);
+        if (!new_ptr)
+                PLOG_FATAL(cb, "realloc");
+        return new_ptr;
+}
+
 int socket_or_die(int domain, int type, int protocol, struct callbacks *cb)
 {
         int s = socket(domain, type, protocol);
