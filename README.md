@@ -37,8 +37,9 @@ Table of contents:
 
 ## Install
 
-Currently neper consists of five binaries, `tcp_rr` and `tcp_stream` and
-`tcp_crr` and `udp_rr` and `udp_stream`, corresponding to five workloads.
+Currently neper consists of six binaries, `tcp_rr` and `tcp_stream` and
+`tcp_crr` and `udp_rr` and `udp_stream` and `psp_stream`, corresponding to six
+workloads.
 
 ## Basic usage
 
@@ -228,6 +229,13 @@ To have netperf `TCP_MAERTS` test, pass `-M` which overrides `-r` and `-w`.
     server$ tcp_stream -M
     client$ tcp_stream -c -H server -M
 
+### `psp_stream`
+
+`psp_stream` shares all the command-line options and output with `tcp_stream`.
+They differ in the secure socket setup and the ensuing encryption/decryption
+operations performed by the PSP-capable hardwares.  More details on PSP are
+available in: [google/psp](https://github.com/google/psp).
+
 ## Options
 
 ### Connectivity options
@@ -309,6 +317,16 @@ the stdout summary.
     throughput_opt
     zerocopy
 
+### `psp_stream` options
+
+    reuseaddr
+    enable_read
+    enable_write
+    epoll_trigger
+    delay
+    throughput_opt
+    zerocopy
+
 ## Output format
 
 When consuming the key-value pairs in the output, the order of the keys should
@@ -361,6 +379,14 @@ be insignificant.  However, the keys are case sensitive.
     correlation_coefficient # for throughput
 
 #### `udp_stream`
+
+    num_transactions
+    throughput_Mbps
+    correlation_coefficient # for throughput
+    throughput_units
+    throughput
+
+#### `psp_stream`
 
     num_transactions
     throughput_Mbps
