@@ -7,7 +7,7 @@ neper is a Linux networking performance tool.
 * Collect statistics in a more accurate way.
 * Export statistics to CSV for easier consumption by other tools.
 
-neper currently supports five workloads:
+neper currently supports six workloads:
 
 * `tcp_rr` generates request/response workload (similar to HTTP or RPC) over
   TCP
@@ -19,6 +19,8 @@ neper currently supports five workloads:
   UDP
 * `udp_stream` generates bulk data transfer workload (similar to FTP or `scp`)
   over UDP
+* `psp_stream` generates bulk data transfer workload (similar to FTP or `scp`)
+  over TCP-PSP
 
 neper as a small code base with clean coding style and structure, and is
 easy to extend with new workloads and/or new options.  It can also be embedded
