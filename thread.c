@@ -552,7 +552,7 @@ int run_main_thread(struct options *opts, struct callbacks *cb,
                 PLOG_FATAL(cb, "libnuma not available");
 #endif
 
-        cp = control_plane_create(opts, cb, data_pending);
+        cp = control_plane_create(opts, cb, data_pending, fn);
         control_plane_start(cp, &ai);
 
         /* start threads *after* control plane is up, to reuse addrinfo. */

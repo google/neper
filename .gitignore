@@ -4,3 +4,4 @@ tcp_rr
 tcp_stream
 udp_rr
 udp_stream
+psp_stream

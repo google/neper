@@ -32,6 +32,7 @@ struct addrinfo *getaddrinfo_or_die(const char *host, const char *port,
                                     struct callbacks *);
 void listen_or_die(int, int backlog, struct callbacks *);
 void *malloc_or_die(size_t, struct callbacks *);
+void *realloc_or_die(void *ptr, size_t, struct callbacks *);
 int socket_or_die(int domain, int type, int protocol, struct callbacks *);
 
 #endif

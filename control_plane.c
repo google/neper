@@ -327,12 +327,14 @@ struct control_plane {
         int ctrl_conn;
         int ctrl_port;
         struct countdown_cond *data_pending;
+        const struct neper_fn *fn;
         int *client_fds;
 };
 
 struct control_plane* control_plane_create(struct options *opts,
                                            struct callbacks *cb,
-                                           struct countdown_cond *data_pending)
+                                           struct countdown_cond *data_pending,
+                                           const struct neper_fn *fn)
 {
         struct control_plane *cp;
 
@@ -340,6 +342,7 @@ struct control_plane* control_plane_create(struct options *opts,
         cp->opts = opts;
         cp->cb = cb;
         cp->data_pending = data_pending;
+        cp->fn = fn;
         return cp;
 }
 
@@ -350,11 +353,17 @@ void control_plane_start(struct control_plane *cp, struct addrinfo **ai)
                                              cp->opts->control_port, ai,
                                              cp->opts, cp->cb);
                 LOG_INFO(cp->cb, "connected to control port");
+                if (cp->fn->fn_ctrl_client) {
+                        cp->fn->fn_ctrl_client(cp->ctrl_conn, cp->cb);
+                }
         } else {
                 cp->ctrl_port = ctrl_listen(cp->opts->host,
                                             cp->opts->control_port, ai,
                                             cp->opts, cp->cb);
                 LOG_INFO(cp->cb, "opened control port");
+                if (cp-> fn->fn_ctrl_server) {
+                        cp->fn->fn_ctrl_server(cp->ctrl_conn, cp->cb);
+                }
         }
 }
 
