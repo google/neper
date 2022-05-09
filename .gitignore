@@ -5,3 +5,5 @@ tcp_stream
 udp_rr
 udp_stream
 psp_stream
+psp_rr
+psp_crr
