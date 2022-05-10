@@ -7,7 +7,7 @@ neper is a Linux networking performance tool.
 * Collect statistics in a more accurate way.
 * Export statistics to CSV for easier consumption by other tools.
 
-neper currently supports six workloads:
+neper currently supports eight workloads:
 
 * `tcp_rr` generates request/response workload (similar to HTTP or RPC) over
   TCP
@@ -21,6 +21,10 @@ neper currently supports six workloads:
   over UDP
 * `psp_stream` generates bulk data transfer workload (similar to FTP or `scp`)
   over TCP-PSP
+* `psp_rr` generates request/response workload (similar to HTTP or RPC) over
+  TCP-PSP
+* `psp_crr` is similar to psp_rr but establishes a fresh connection for each
+  request/response pair
 
 neper as a small code base with clean coding style and structure, and is
 easy to extend with new workloads and/or new options.  It can also be embedded
@@ -39,9 +43,9 @@ Table of contents:
 
 ## Install
 
-Currently neper consists of six binaries, `tcp_rr` and `tcp_stream` and
-`tcp_crr` and `udp_rr` and `udp_stream` and `psp_stream`, corresponding to six
-workloads.
+Currently neper consists of eight binaries, `tcp_rr` and `tcp_stream` and
+`tcp_crr` and `udp_rr` and `udp_stream` and `psp_stream` and `psp_crr` and
+`psp_rr`, corresponding to eight workloads.
 
 ## Basic usage
 
@@ -200,6 +204,13 @@ flows respectively.
 Also note that we have to specify the number of flows on the server side.  This
 behavior might change in the future.
 
+### `psp_crr` and `psp_rr`
+
+`psp_crr` and `psp_rr` shares all the command-line options and output with
+`tcp_crr` and `tcp_rr`.  They differ in the secure socket setup and the ensuing
+encryption/decryption operations performed by the PSP-capable hardwares.  More
+details on PSP are available in: [google/psp](https://github.com/google/psp).
+
 ### `tcp_stream`
 
 `tcp_stream` shares most of the command-line options with `tcp_rr`.  They
@@ -272,6 +283,13 @@ available in: [google/psp](https://github.com/google/psp).
     listen_backlog
 
 ### `tcp_rr` and `tcp_crr` options
+
+    request_size
+    response_size
+    percentiles
+    num_ports
+
+### `psp_rr` and `psp_crr` options
 
     request_size
     response_size
@@ -360,6 +378,13 @@ be insignificant.  However, the keys are case sensitive.
     nivcsw_end
 
 #### `tcp_rr` and `tcp_crr`
+
+    num_transactions
+    num_ports
+    throughput
+    correlation_coefficient # for throughput
+
+#### `psp_rr` and `psp_crr`
 
     num_transactions
     num_ports
