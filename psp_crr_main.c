@@ -50,6 +50,7 @@ int main(int argc, char **argv)
         check_options_tcp(    &opts, &cb);
         check_options_rr(     &opts, &cb);
         check_options_tcp_crr(&opts, &cb);
+        check_options_psp_common(&opts, &cb);
 
         adjust_interval(&opts.interval, opts.test_length);
         if (opts.suicide_length) {
