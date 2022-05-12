@@ -30,6 +30,7 @@ void check_options_tcp_crr(   struct options *opts, struct callbacks *cb);
 void check_options_tcp_stream(struct options *opts, struct callbacks *cb);
 void check_options_udp_rr(    struct options *opts, struct callbacks *cb);
 void check_options_udp_stream(struct options *opts, struct callbacks *cb);
+void check_options_psp_common(struct options *opts, struct callbacks *cb);
 
 #endif  // THIRD_PARTY_NEPER_CHECK_ALL_OPTIONS_H_
 

@@ -102,3 +102,14 @@ void check_options_udp_rr(struct options *opts, struct callbacks *cb)
 void check_options_udp_stream(struct options *opts, struct callbacks *cb)
 {
 }
+
+void check_options_psp_common(struct options *opts, struct callbacks *cb)
+{
+	if (opts->client) {
+		CHECK(cb, opts->local_hosts != NULL,
+		      "PSP client requires local IP (-L) for device lookup.");
+	} else {
+		CHECK(cb, opts->host != NULL,
+		      "PSP server requires server IP (-H) for device lookup.");
+	}
+}

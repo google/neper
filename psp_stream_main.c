@@ -64,6 +64,7 @@ int main(int argc, char **argv)
         check_options_tcp(       &opts, &cb);
         check_options_stream(    &opts, &cb);
         check_options_tcp_stream(&opts, &cb);
+        check_options_psp_common(&opts, &cb);
 
         adjust_interval(&opts.interval, opts.test_length);
         if (opts.suicide_length) {
