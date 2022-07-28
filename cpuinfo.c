@@ -53,7 +53,7 @@ int get_cpuinfo(struct cpuinfo *cpus, int max_cpus, struct callbacks *cb)
                  */
                 if (m == 2) {
                         rtrim(key);
-#if defined(__powerpc__) || defined(__aarch64__)
+#if defined(__powerpc__) || defined(__aarch64__) || defined(__riscv)
                         if (strcmp(ltrim(key), "processor") == 0) {
                                 sscanf(value, "%d", &cpus[n].processor);
                                 n++;

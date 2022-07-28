@@ -49,7 +49,7 @@ static double get_aggregate_proc_stat_system_time()
                 exit(1);
         }
         /* Return the total system time in seconds */
-        return ((double)(system + irq + softirq) / (double)HZ);
+        return ((double)(system + irq + softirq) / (double)sysconf(_SC_CLK_TCK));
 }
 
 static void secs_to_timeval(double secs, struct timeval *tv)
