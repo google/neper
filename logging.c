@@ -152,7 +152,6 @@ static void logging(const char *file, int line, const char *func,
                 fclose(log_file);
                 fflush(stdout);
                 fflush(stderr);
-                fcloseall();
                 exit(1);
         }
 }

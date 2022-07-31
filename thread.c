@@ -399,32 +399,6 @@ void start_worker_threads(struct options *opts, struct callbacks *cb,
                 t[i].loop_init_c = loop_init_c;
                 t[i].loop_init_m = loop_init_m;
 
-                if (opts->pin_cpu) {
-                        s = pthread_attr_setaffinity_np(&attr,
-                                                sizeof(cpu_set_t),
-                                                &cpuset[i % allowed_cores]);
-                        if (s != 0) {
-                                LOG_FATAL(cb, "pthread_attr_setaffinity_np: %s",
-                                          strerror(s));
-                        }
-                }
-#ifndef NO_LIBNUMA
-                else if (opts->pin_numa) {
-                        int num_numa = numa_num_configured_nodes();
-                        cpu_set_t numa_allowed_cpus;
-
-                        get_numa_allowed_cpus(cb, i % num_numa,
-                                              &numa_allowed_cpus);
-                        s = pthread_attr_setaffinity_np(&attr,
-                                                sizeof(cpu_set_t),
-                                                &numa_allowed_cpus);
-                        if (s != 0) {
-                                LOG_FATAL(cb, "pthread_attr_setaffinity_np: %s",
-                                          strerror(s));
-                        }
-
-                }
-#endif
 
                 t[i].flows = NULL;
                 t[i].flow_space = 0;
@@ -437,6 +411,33 @@ void start_worker_threads(struct options *opts, struct callbacks *cb,
                 s = pthread_create(&t[i].id, &attr, thread_func, &t[i]);
                 if (s != 0)
                         LOG_FATAL(cb, "pthread_create: %s", strerror(s));
+
+                if (opts->pin_cpu) {
+                        s = pthread_setaffinity_np(t[i].id,
+                                                sizeof(cpu_set_t),
+                                                &cpuset[i % allowed_cores]);
+                        if (s != 0) {
+                                LOG_FATAL(cb, "pthread_setaffinity_np: %s",
+                                          strerror(s));
+                        }
+                }
+#ifndef NO_LIBNUMA
+                else if (opts->pin_numa) {
+                        int num_numa = numa_num_configured_nodes();
+                        cpu_set_t numa_allowed_cpus;
+
+                        get_numa_allowed_cpus(cb, i % num_numa,
+                                              &numa_allowed_cpus);
+                        s = pthread_setaffinity_np(t[i].id,
+                                                sizeof(cpu_set_t),
+                                                &numa_allowed_cpus);
+                        if (s != 0) {
+                                LOG_FATAL(cb, "pthread_setaffinity_np: %s",
+                                          strerror(s));
+                        }
+
+                }
+#endif
         }
 
         s = pthread_attr_destroy(&attr);
