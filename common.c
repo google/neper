@@ -222,18 +222,6 @@ void set_mark(int fd, int mark, struct callbacks *cb) {
                 PLOG_ERROR(cb, "setsockopt(MARK)");
 }
 
-int procfile_int(const char *path, struct callbacks *cb)
-{
-        int result = 0;
-        FILE *f = fopen(path, "r");
-        if (!f)
-                PLOG_FATAL(cb, "fopen '%s'", path);
-        if (fscanf(f, "%d", &result) != 1)
-                PLOG_FATAL(cb, "fscanf");
-        fclose(f);
-        return result;
-}
-
 void fill_random(char *buf, int size)
 {
         int fd, chunk, done = 0;
