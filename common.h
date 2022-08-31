@@ -127,7 +127,6 @@ void set_zerocopy(int fd, int on, struct callbacks *cb);
 void set_freebind(int fd, struct callbacks *cb);
 void set_debug(int fd, int onoff, struct callbacks *cb);
 void set_mark(int fd, int mark, struct callbacks *cb);
-int procfile_int(const char *path, struct callbacks *cb);
 void fill_random(char *buf, int size);
 int do_close(int fd);
 struct addrinfo *copy_addrinfo(const struct addrinfo *);
