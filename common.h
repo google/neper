@@ -47,6 +47,10 @@
 #define MSG_ZEROCOPY 0x4000000
 #endif
 
+#ifndef TCP_TX_DELAY
+#define TCP_TX_DELAY 37
+#endif
+
 struct flow;
 struct thread;
 
@@ -127,6 +131,7 @@ void set_zerocopy(int fd, int on, struct callbacks *cb);
 void set_freebind(int fd, struct callbacks *cb);
 void set_debug(int fd, int onoff, struct callbacks *cb);
 void set_mark(int fd, int mark, struct callbacks *cb);
+void set_tcp_tx_delay(int fd, int delay, struct callbacks *cb);
 void fill_random(char *buf, int size);
 int do_close(int fd);
 struct addrinfo *copy_addrinfo(const struct addrinfo *);

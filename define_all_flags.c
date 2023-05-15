@@ -68,6 +68,7 @@ struct flags_parser *add_flags_tcp(struct flags_parser *fp)
 #ifndef NO_LIBNUMA
         DEFINE_FLAG(fp, bool,         pin_numa,       false,  'N', "Pin threads to CPU cores");
 #endif
+        DEFINE_FLAG(fp, int,          tcp_tx_delay,   0,      't', "Force usec delay in TCP flows");
 
         /* Return the updated fp */
         return (fp);

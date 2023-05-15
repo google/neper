@@ -281,6 +281,7 @@ available in: [google/psp](https://github.com/google/psp).
 
     max_pacing_rate
     listen_backlog
+    tcp_tx_delay
 
 ### `tcp_rr` and `tcp_crr` options
 
