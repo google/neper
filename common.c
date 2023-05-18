@@ -222,6 +222,12 @@ void set_mark(int fd, int mark, struct callbacks *cb) {
                 PLOG_ERROR(cb, "setsockopt(MARK)");
 }
 
+void set_tcp_tx_delay(int fd, int delay, struct callbacks *cb)
+{
+        if (setsockopt(fd, SOL_TCP, TCP_TX_DELAY, &delay, sizeof(delay)))
+                PLOG_ERROR(cb, "setsockopt(TCP_TX_DELAY)");
+}
+
 void fill_random(char *buf, int size)
 {
         int fd, chunk, done = 0;
