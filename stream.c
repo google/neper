@@ -23,10 +23,31 @@
 #include "socket.h"
 #include "stats.h"
 #include "thread.h"
+#ifdef WITH_TCPDIRECT
+#include "tcpdirect.h"
+#endif
 
 static void *stream_alloc(struct thread *t)
 {
         const struct options *opts = t->opts;
+
+#ifdef WITH_TCPDIRECT
+        if (!t->f_mbuf && t->opts->tcpd_gpu_pci_addr) {
+                if (tcpdirect_cuda_setup_alloc(t->opts, &t->f_mbuf, t)) {
+                        LOG_ERROR(t->cb, "%s: failed to setup tcpdirect CUDA socket",
+                                  __func__);
+                        exit(1);
+                }
+        }
+
+        if (!t->f_mbuf && t->opts->tcpd_nic_pci_addr) {
+                if (udmabuf_setup_alloc(t->opts, &t->f_mbuf)) {
+                        LOG_ERROR(t->cb, "%s: failed to setup tcpdirect UDMA socket",
+                                  __func__);
+                        exit(1);
+                }
+        }
+#endif
 
         if (!t->f_mbuf) {
                 t->f_mbuf = malloc_or_die(opts->buffer_size, t->cb);
@@ -85,6 +106,13 @@ void stream_handler(struct flow *f, uint32_t events)
         if (events & EPOLLIN)
                 do {
                         do {
+#ifdef WITH_TCPDIRECT
+                                if (t->opts->tcpd_nic_pci_addr)
+                                        n = tcpdirect_recv(fd, mbuf,
+                                                           opts->buffer_size,
+                                                           opts->recv_flags);
+                                else
+#endif
                                 n = recv(fd, mbuf, opts->buffer_size,
                                          opts->recv_flags);
                         } while(n == -1 && errno == EINTR);
@@ -102,6 +130,14 @@ void stream_handler(struct flow *f, uint32_t events)
 
         if (events & EPOLLOUT)
                 do {
+#ifdef WITH_TCPDIRECT
+                        if (t->opts->tcpd_gpu_pci_addr) {
+                                n = tcpdirect_send(fd, mbuf, opts->buffer_size, opts->send_flags);
+                        }else if (t->opts->tcpd_nic_pci_addr) {
+                                n = tcpdirect_udma_send(fd, mbuf,
+                                        opts->buffer_size, opts->send_flags);
+                        } else
+#endif
                         n = send(fd, mbuf, opts->buffer_size, opts->send_flags);
                         if (n == -1) {
                                 if (errno != EAGAIN)

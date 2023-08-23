@@ -106,6 +106,14 @@ struct options {
         bool async_connect;
 
         /* tcp_stream */
+#ifdef WITH_TCPDIRECT
+        const char *tcpd_nic_pci_addr;
+        const char *tcpd_gpu_pci_addr;
+        unsigned long long tcpdirect_phys_addr;
+        unsigned long long tcpdirect_phys_len;
+        const char *tcpdirect_src_ip;
+        const char *tcpdirect_dst_ip;
+#endif
         bool enable_read;
         bool enable_write;
         bool enable_tcp_maerts;

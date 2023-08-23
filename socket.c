@@ -67,6 +67,10 @@ static void socket_init_not_established(struct thread *t, int s)
                 if (err)
                         PLOG_ERROR(t->cb, "setsockopt(SO_LINGER)");
         }
+#ifdef WITH_TCPDIRECT
+        if (opts->tcpdirect_phys_addr)
+                tcpdirect_setup_socket(s);
+#endif
 }
 
 /*

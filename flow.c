@@ -19,6 +19,9 @@
 #include "socket.h"
 #include "thread.h"
 #include "stats.h"
+#ifdef WITH_TCPDIRECT
+#include "tcpdirect.h"
+#endif
 
 /*
  * We define the flow struct locally to this file to force outside users to go
@@ -249,6 +252,19 @@ void flow_delete(struct flow *f)
                 /* If we kept stats, forget this flow */
                 thread_clear_flow_or_die(f->f_thread, f);
         }
+
+#ifdef WITH_TCPDIRECT
+        if (flow_thread(f)->opts->tcpd_gpu_pci_addr) {
+                cuda_flow_cleanup(f->f_mbuf);
+        } else if (flow_thread(f)->opts->tcpd_nic_pci_addr) {
+                struct tcpdirect_udma_mbuf *t_mbuf = (struct tcpdirect_udma_mbuf *)f->f_mbuf;
+
+                close(t_mbuf->buf_pages);
+                close(t_mbuf->buf);
+                close(t_mbuf->memfd);
+                close(t_mbuf->devfd);
+        }
+#endif
 
 /* TODO: need to free the stat struct here for crr tests */
         free(f->f_opaque);

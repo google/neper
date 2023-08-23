@@ -18,7 +18,7 @@
 
 all: binaries
 
-CFLAGS = -std=c99 -Wall -O3 -g -D_GNU_SOURCE -DNO_LIBNUMA
+CFLAGS = -std=c99 -Wall -O3 -g -D_GNU_SOURCE -DNO_LIBNUMA -DNDEBUG=1 -DWITH_TCPDIRECT
 
 lib := \
 	check_all_options.o \
@@ -48,7 +48,12 @@ lib := \
 
 tcp_rr-objs := tcp_rr_main.o tcp_rr.o rr.o $(lib)
 
-tcp_stream-objs := tcp_stream_main.o tcp_stream.o stream.o $(lib)
+tcp_stream-objs := tcp_stream_main.o tcp_stream.o stream.o tcpdirect.o $(lib)
+
+tcp_stream-cuda-objs := tcp_stream_main_cuda.o tcp_stream.o stream.o tcpdirect.o $(lib)
+
+tcp_stream-cuda2-objs := tcp_stream_main.o tcp_stream.o stream.o tcpdirect.o $(lib)
+# tcp_stream-cuda3-objs := tcp_stream_main.cu.o tcp_stream.o stream.o tcpdirect.o $(lib)
 
 tcp_crr-objs := tcp_crr_main.o tcp_crr.o rr.o $(lib)
 
@@ -64,11 +69,26 @@ psp_rr-objs := psp_rr_main.o psp_rr.o rr.o psp_lib.o $(lib)
 
 ext-libs := -lm -lrt -lpthread
 
+tcpdirect.o: tcpdirect.cu
+	nvcc -arch=sm_90 -O3 -g -D_GNU_SOURCE -DNO_LIBNUMA -DWITH_TCPDIRECT -c -o $@ $^
+
+tcp_stream_main_cuda.o: tcp_stream_main.cu
+	nvcc -arch=sm_90 -O3 -g -D_GNU_SOURCE -DNO_LIBNUMA -c -o $@ $^
+
+tcp_stream_main.cu.o: tcp_stream_main.c
+	nvcc -arch=sm_90 -O3 -g -D_GNU_SOURCE -DNO_LIBNUMA -DWITH_TCPDIRECT -c -o $@ $^
+
 tcp_rr: $(tcp_rr-objs)
 	$(CC) $(LDFLAGS) -o $@ $^ $(ext-libs)
 
 tcp_stream: $(tcp_stream-objs)
 	$(CC) $(LDFLAGS) -o $@ $^ $(ext-libs)
+
+tcp_stream_cuda2: $(tcp_stream-cuda2-objs)
+	g++ $(LDFLAGS) -o $@ $^ $(ext-libs) -lc -L/usr/local/cuda/lib64 -lcudart -lcuda
+
+tcp_stream_cuda: $(tcp_stream-cuda-objs)
+	g++ $(LDFLAGS) -o $@ $^ $(ext-libs) -lc -L/usr/local/cuda/lib64 -lcudart -lcuda
 
 tcp_crr: $(tcp_crr-objs)
 	$(CC) $(LDFLAGS) -o $@ $^ $(ext-libs)
@@ -88,7 +108,7 @@ psp_crr: $(psp_crr-objs)
 psp_rr: $(psp_rr-objs)
 	$(CC) $(LDFLAGS) -o $@ $^ $(ext-libs)
 
-binaries: tcp_rr tcp_stream tcp_crr udp_rr udp_stream psp_stream psp_crr psp_rr
+binaries: tcp_rr tcp_stream tcp_crr udp_rr udp_stream psp_stream psp_crr psp_rr tcp_stream_cuda tcp_stream_cuda2
 
 clean:
-	rm -f *.o tcp_rr tcp_stream tcp_crr udp_rr udp_stream psp_stream psp_crr psp_rr
+	rm -f *.o tcp_rr tcp_stream tcp_crr udp_rr udp_stream psp_stream psp_crr psp_rr tcp_stream_cuda tcp_stream_cuda2

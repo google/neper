@@ -141,6 +141,14 @@ struct flags_parser *add_flags_tcp_stream(struct flags_parser *fp)
         DEFINE_FLAG(fp, bool,          enable_write,    false,   'w', "Write to flows? Enabled by default for the client");
         DEFINE_FLAG(fp, bool,          enable_tcp_maerts,    false,   'M', "Enables TCP_MAERTS test (server writes and client reads). It overrides enable_read, and enable_write");
         DEFINE_FLAG(fp, bool,          async_connect,   false,   0,  "use non blocking connect");
+#ifdef WITH_TCPDIRECT
+        DEFINE_FLAG(fp, const char *,  tcpd_nic_pci_addr, 0,     0,   "NIC PCI addr, e.x. 0000:06:00.0");
+        DEFINE_FLAG(fp, const char *,  tcpd_gpu_pci_addr, 0,     0,   "GPU PCI addr, e.x. 0000:04:00.0");
+        DEFINE_FLAG(fp, unsigned long long,          tcpdirect_phys_addr, 0, 0, "Set the remote memory physical address for tcpdirect, e.x. 0000:06:00.0");
+        DEFINE_FLAG(fp, unsigned long long,          tcpdirect_phys_len, 0, 0, "Set the remote memory length for tcpdirect");
+        DEFINE_FLAG(fp, const char *,                tcpdirect_src_ip, 0, 0, "Set the src ip address for tcpdirect");
+        DEFINE_FLAG(fp, const char *,                tcpdirect_dst_ip, 0, 0, "Set the dst ip address for tcpdirect");
+#endif
 
         /* Return the updated fp */
         return (fp);
