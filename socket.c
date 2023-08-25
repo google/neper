@@ -18,6 +18,9 @@
 #include "flow.h"
 #include "socket.h"
 #include "thread.h"
+#ifdef WITH_TCPDIRECT
+#include "tcpdirect.h"
+#endif
 
 #ifndef NO_LIBNUMA
 #include "third_party/libnuma/numa.h"
@@ -68,7 +71,7 @@ static void socket_init_not_established(struct thread *t, int s)
                         PLOG_ERROR(t->cb, "setsockopt(SO_LINGER)");
         }
 #ifdef WITH_TCPDIRECT
-        if (opts->tcpdirect_phys_addr)
+        if (opts->tcpd_nic_pci_addr)
                 tcpdirect_setup_socket(s);
 #endif
 }

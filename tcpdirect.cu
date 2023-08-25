@@ -244,9 +244,21 @@ int tcpdirect_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct
     exit(71);
   }
 
-  // if (!is_client) {
-  //   tcpdirect_setup_rx_socket(opts, t);
-  // }
+  if (!is_client) {
+    /* TODO hardcoded num_queues */
+    int num_queues = 15;
+    struct dma_buf_pages_bind_rx_queue bind_cmd;
+
+    strcpy(bind_cmd.ifname, "eth1");
+    bind_cmd.rxq_idx = num_queues;
+
+    ret = ioctl(gpu_mem_fd_, DMA_BUF_PAGES_BIND_RX, &bind_cmd);
+    if (ret < 0) {
+      printf("%s: [FAIL, bind fail queue=%d]\n", TEST_PREFIX,
+            num_queues);
+      exit(78);
+    }
+  }
 
   *f_mbuf = tmbuf;
   tmbuf->gpu_mem_fd_ = gpu_mem_fd_;
@@ -257,7 +269,6 @@ int tcpdirect_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct
 
 int udmabuf_setup_alloc(const struct options *opts, void **f_mbuf) {
   bool is_client = opts->client;
-  std::unique_ptr<char[]> buf_;
   int devfd;
   int memfd;
   int buf;
@@ -570,13 +581,13 @@ int tcpdirect_recv(int socket, void *f_mbuf, size_t n, int flags) {
     // sync.flags = DMA_BUF_SYNC_READ | DMA_BUF_SYNC_END;
     // ioctl(buf, DMA_BUF_IOCTL_SYNC, &sync);
 
-    // ret = setsockopt(client_fd, SOL_SOCKET,
-    //       SO_DEVMEM_DONTNEED, &token,
-    //       sizeof(token));
-    // if (ret) {
-    //   perror("DONTNEED failed");
-    //   exit(1);
-    // }
+    ret = setsockopt(client_fd, SOL_SOCKET,
+                      SO_DEVMEM_DONTNEED, &token,
+                      sizeof(token));
+    if (ret) {
+      perror("DONTNEED failed");
+      exit(1);
+    }
 
     // munmap(buf_mem, n);
 
