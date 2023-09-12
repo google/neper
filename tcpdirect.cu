@@ -124,7 +124,7 @@ int tcpdirect_setup_socket(int socket) {
 
 int get_gpumem_dmabuf_pages_fd(const std::string& gpu_pci_addr,
                                const std::string& nic_pci_addr, void* gpu_mem,
-                               size_t gpu_mem_sz, int* dma_buf_fd) {
+                               size_t gpu_mem_sz, int* dma_buf_fd, bool is_client) {
   int err, ret;
 
   cuMemGetHandleForAddressRange((void*)dma_buf_fd, (CUdeviceptr)gpu_mem,
@@ -237,7 +237,7 @@ int tcpdirect_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct
 
   gpu_mem_fd_ = get_gpumem_dmabuf_pages_fd(gpu_pci_addr, nic_pci_addr,
                                            gpu_tx_mem_, alloc_size,
-                                           &dma_buf_fd_);
+                                           &dma_buf_fd_, is_client);
 
   if (gpu_mem_fd_ < 0) {
     printf("get_gpumem_dmabuf_pages_fd() failed!: ");
