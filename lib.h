@@ -113,6 +113,7 @@ struct options {
         unsigned long long tcpdirect_phys_len;
         const char *tcpdirect_src_ip;
         const char *tcpdirect_dst_ip;
+        const char *tcpdirect_link_name;
 #endif
         bool enable_read;
         bool enable_write;

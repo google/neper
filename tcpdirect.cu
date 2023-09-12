@@ -167,43 +167,6 @@ err_close_dmabuf:
   return err;
 }
 
-int tcpdirect_setup_rx_socket(const struct options *opts, struct thread *t)
-{
-  int j;
-  char *eth_device = "eth1";  // TODO: hard-coded for now
-
-  /* Need to trigger the NIC to reallocate its RX pages, otherwise the
-    * bind doesn't take effect.
-    */
-  system("sudo ethtool --set-priv-flags eth1 enable-header-split off");
-  system("sudo ethtool --set-priv-flags eth1 enable-header-split on");
-
-  sleep(2);
-
-  // TODO hardcoded
-  for (j = 0; j < t->flow_limit; j++) {
-    char command[256];
-    sleep(1);
-
-    int flow_idx = (t->flow_first + t->flow_count);
-    int src_port = flow_idx + t->opts->source_port;
-
-    int n = t->opts->num_ports ? t->opts->num_ports : 1;
-    int i = (t->flow_first + t->flow_count) % n;
-    int dst_port = atoi(t->opts->port) + i;
-
-    // TODO hard-coded
-    char *src_ip = "192.169.1.6", *dst_ip = "192.168.1.4";
-
-    snprintf(
-      command, sizeof(command),
-      "sudo ethtool -N eth1 flow-type tcp4 src-ip %s dst-ip %s src-port %i dst-port %i queue 15",
-      src_ip, dst_ip, src_port, dst_port);
-
-    printf("bound %s %i %s %i\n", src_ip, src_port, dst_ip, dst_port);
-  }
-}
-
 int tcpdirect_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct thread *t)
 {
   bool is_client = opts->client;
@@ -249,7 +212,7 @@ int tcpdirect_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct
     int num_queues = 15;
     struct dma_buf_pages_bind_rx_queue bind_cmd;
 
-    strcpy(bind_cmd.ifname, "eth1");
+    strcpy(bind_cmd.ifname, opts->tcpdirect_link_name);
     bind_cmd.rxq_idx = num_queues;
 
     ret = ioctl(gpu_mem_fd_, DMA_BUF_PAGES_BIND_RX, &bind_cmd);
@@ -361,8 +324,6 @@ int udmabuf_setup_alloc(const struct options *opts, void **f_mbuf) {
             num_queues);
       exit(78);
     }
-
-    // tcpdirect_setup_rx_socket(opts, t);
   }
 
   struct dma_buf_sync sync = { 0 };
@@ -590,10 +551,8 @@ int tcpdirect_recv(int socket, void *f_mbuf, size_t n, int flags) {
     }
 
     // munmap(buf_mem, n);
-
-    return total_received;
   }
-  return 0;
+  return total_received;
 }
 
 int cuda_flow_cleanup(void *f_mbuf) {

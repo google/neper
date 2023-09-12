@@ -148,6 +148,7 @@ struct flags_parser *add_flags_tcp_stream(struct flags_parser *fp)
         DEFINE_FLAG(fp, unsigned long long,          tcpdirect_phys_len, 0, 0, "Set the remote memory length for tcpdirect");
         DEFINE_FLAG(fp, const char *,                tcpdirect_src_ip, 0, 0, "Set the src ip address for tcpdirect");
         DEFINE_FLAG(fp, const char *,                tcpdirect_dst_ip, 0, 0, "Set the dst ip address for tcpdirect");
+        DEFINE_FLAG(fp, const char *,                tcpdirect_link_name, "eth1", 0, "Link name to bind DMA buffer_pages for Rx");
 #endif
 
         /* Return the updated fp */
