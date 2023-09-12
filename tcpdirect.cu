@@ -141,7 +141,7 @@ int get_gpumem_dmabuf_pages_fd(const std::string& gpu_pci_addr,
 
   struct dma_buf_create_pages_info frags_create_info;
   frags_create_info.dma_buf_fd = *dma_buf_fd;
-  frags_create_info.create_page_pool = 0;
+  frags_create_info.create_page_pool = is_client ? 0 : 1;
 
   uint16_t pci_bdf[3];
   ret = sscanf(nic_pci_addr.c_str(), "0000:%hx:%hx.%hx", &pci_bdf[0],
