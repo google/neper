@@ -165,9 +165,9 @@ if __name__ == "__main__":
         debug(cmds)
         sp_list = run_cmds(cmds)
         debug("parsing subprocesses outputs")
-        for i in parse_subprocess_outputs(sp_list):
+        for dev, i in zip(devices, parse_subprocess_outputs(sp_list)):
                 if not args.client:
-                        debug(f"throughput (Mb/s): {i['throughput']}")
+                        print(f"[{dev}] Throughput (Mb/s): {i['throughput']}")
 
         # delete flow-steering rules
         if not args.client:
