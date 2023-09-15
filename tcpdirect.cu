@@ -191,6 +191,12 @@ int tcpdirect_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct
     alloc_size += GPUMEM_ALIGNMENT - (alloc_size % GPUMEM_ALIGNMENT);
   }
 
+  ret = cudaSetDevice(opts->tcpdirect_gpu_idx);
+  if (ret != 0) {
+    printf("cudaSetDevice failed: index %i", opts->tcpdirect_gpu_idx);
+    exit(70);
+  }
+
   cudaMalloc(&gpu_tx_mem_, alloc_size);
   unsigned int flag = 1;
   cuPointerSetAttribute(&flag,

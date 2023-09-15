@@ -19,6 +19,13 @@ link_to_nic_pci_addr = {
         "eth4": "0000:8c:00.0"
 }
 
+link_to_gpu_index = {
+        "eth1": "0",
+        "eth2": "2",
+        "eth3": "4",
+        "eth4": "6"
+}
+
 # adds flow-steering rules, e.x.
 # ethtool -N eth1 flow-type tcp4 ...
 def install_flow_steer_rules(dev, threads: int, src_port, port, src_ip, dst_ip)->list:
@@ -47,8 +54,8 @@ def del_flow_steer_rules(dev: str, rules: list):
                 debug(f"[{dev}] deleting rule {rule}")
                 subprocess.run(del_cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
-
-def build_neper_cmd(neper_dir: str, is_client: bool, link: str,
+# returns a 2-tuple of a Neper command and a dict of env vars
+def build_neper_cmd(neper_dir: str, is_client: bool, dev: str,
                     threads: int, flows: int,
                     cpu_list, buffer_size: int, phys_len: int,
                     nic_pci: str, gpu_pci: str,
@@ -56,15 +63,17 @@ def build_neper_cmd(neper_dir: str, is_client: bool, link: str,
 
         # TODO tcp_stream_cuda2 -> tcp_stream eventually
         cmd = (f"taskset --cpu-list {cpu_list} {neper_dir}/tcp_stream_cuda2 -T {threads} -F {flows} --tcpdirect-phys-len {phys_len}"
-                f" --port {port} --source-port {source_port} --control-port {control_port}"
+                f" --port {port} --source-port {source_port} --control-port {control_port} --tcpdirect-gpu-idx {link_to_gpu_index[dev]}"
                 f" --buffer-size {buffer_size} --tcpd-nic-pci-addr {nic_pci} --tcpd-gpu-pci-addr {gpu_pci} -l {length}")
 
+        env = None
         if is_client:
                 cmd += f" -c -H {host_ip}"
         else:
-                cmd += f" --tcpdirect-link-name {dev}"
+                cmd = cmd + f" --tcpdirect-link-name {dev}"
+                env = {"CUDA_VISIBLE_DEVICES": link_to_gpu_index[dev]}
 
-        return cmd
+        return (cmd, env)
 
 # returns a CPU range for taskset
 # e.x. returns 4-7 provided 0, 4, 1 as arguments
@@ -75,8 +84,8 @@ def get_cpu_range(starting_cpu:int, interval: int, idx: int)->str:
 
 def run_cmds(cmds: list)->list:
         sp_list = []
-        for cmd in cmds:
-                popen = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        for cmd, env in cmds:
+                popen = subprocess.Popen(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
                 sp_list.append(popen)
 
         return sp_list
@@ -155,12 +164,12 @@ if __name__ == "__main__":
                 host_ip = hosts[i] if is_client else None
                 cpu_range = get_cpu_range(2, 3, i)
 
-                cmd = build_neper_cmd(args.neper_dir, is_client, dev,
+                cmd_env = build_neper_cmd(args.neper_dir, is_client, dev,
                                       args.threads, args.flows, cpu_range, args.buffer_size,
                                       args.phys_len, nic_pci, gpu_pci,
                                       ctrl_port, src_port, args.port, args.length, host_ip)
 
-                cmds.append(cmd)
+                cmds.append(cmd_env)
 
         debug(cmds)
         sp_list = run_cmds(cmds)

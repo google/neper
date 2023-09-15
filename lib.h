@@ -114,6 +114,7 @@ struct options {
         const char *tcpdirect_src_ip;
         const char *tcpdirect_dst_ip;
         const char *tcpdirect_link_name;
+        int tcpdirect_gpu_idx;
 #endif
         bool enable_read;
         bool enable_write;
