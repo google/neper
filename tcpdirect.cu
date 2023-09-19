@@ -415,37 +415,38 @@ int tcpdirect_udma_send(int socket, void *f_mbuf, size_t n, int flags) {
 int tcpdirect_send(int socket, void *buf, size_t n, int flags) {
   int gpu_mem_fd_;
   struct iovec iov;
-  struct msghdr *msg;
+  struct msghdr msg = {0};
   struct cmsghdr *cmsg;
   char buf_dummy[n];
   char offsetbuf[CMSG_SPACE(sizeof(uint32_t) * 2)];
-  struct tcpdirect_udma_mbuf *tmbuf;
+  struct tcpdirect_cuda_mbuf *tmbuf;
 
   if (!buf) return -1;
 
-  tmbuf = (struct tcpdirect_udma_mbuf *)buf;
-  gpu_mem_fd_ = tmbuf->pages_fd;
-  msg = &tmbuf->msg;
+  tmbuf = (struct tcpdirect_cuda_mbuf *)buf;
+  gpu_mem_fd_ = tmbuf->gpu_mem_fd_;
+  void *gpu_tx_mem_ = tmbuf->gpu_tx_mem_;
 
-  memset(msg, 0, sizeof(struct msghdr));
+  cudaMemset(gpu_tx_mem_, 'a', n);
+
   // memset(cmsg, 0, sizeof(struct cmsghdr));
 
   iov.iov_base = buf_dummy;
   iov.iov_len = n;
 
-  msg->msg_iov = &iov;
-  msg->msg_iovlen = 1;
+  msg.msg_iov = &iov;
+  msg.msg_iovlen = 1;
 
-  msg->msg_control = offsetbuf;
-  msg->msg_controllen = sizeof(offsetbuf);
+  msg.msg_control = offsetbuf;
+  msg.msg_controllen = sizeof(offsetbuf);
 
-  cmsg = CMSG_FIRSTHDR(msg);
+  cmsg = CMSG_FIRSTHDR(&msg);
   cmsg->cmsg_level = SOL_SOCKET;
   cmsg->cmsg_type = SCM_DEVMEM_OFFSET;
   cmsg->cmsg_len = CMSG_LEN(sizeof(int) * 2);
   *((int*)CMSG_DATA(cmsg)) = gpu_mem_fd_;
 
-  ssize_t bytes_sent = sendmsg(socket, msg, MSG_ZEROCOPY | MSG_DONTWAIT);
+  ssize_t bytes_sent = sendmsg(socket, &msg, MSG_ZEROCOPY | MSG_DONTWAIT);
   if (bytes_sent < 0 && errno != EWOULDBLOCK && errno != EAGAIN) {
     perror("sendmsg() error: ");
     exit(EXIT_FAILURE);
@@ -463,15 +464,14 @@ int tcpdirect_recv(int socket, void *f_mbuf, size_t n, int flags) {
   struct iovec iov;
   struct msghdr msg_local;
   struct msghdr *msg;
-  struct tcpdirect_udma_mbuf *tmbuf;
+  struct tcpdirect_cuda_mbuf *tmbuf;
   int buf, ret, client_fd;
   size_t total_received = 0;
 
   if (!f_mbuf) return -1;
 
-  tmbuf = (struct tcpdirect_udma_mbuf *)f_mbuf;
+  tmbuf = (struct tcpdirect_cuda_mbuf *)f_mbuf;
 
-  buf = tmbuf->buf;
   client_fd = socket;
 
   char buf_dummy[n];
@@ -544,6 +544,13 @@ int tcpdirect_recv(int socket, void *f_mbuf, size_t n, int flags) {
             devmemvec->frag_offset, devmemvec->frag_size,
             devmemvec->frag_token,
             total_received);
+
+    char mybuf[devmemvec->frag_size];
+    cudaMemcpy(mybuf,
+               (char *)tmbuf->gpu_tx_mem_ + devmemvec->frag_offset,
+               devmemvec->frag_size,
+               cudaMemcpyDeviceToHost);
+    printf("cudaFrag: %.25s\n", mybuf);
 
     // sync.flags = DMA_BUF_SYNC_READ | DMA_BUF_SYNC_END;
     // ioctl(buf, DMA_BUF_IOCTL_SYNC, &sync);
