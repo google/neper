@@ -191,11 +191,12 @@ int tcpdirect_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct
     alloc_size += GPUMEM_ALIGNMENT - (alloc_size % GPUMEM_ALIGNMENT);
   }
 
-  ret = cudaSetDevice(opts->tcpdirect_gpu_idx);
-  if (ret != 0) {
-    printf("cudaSetDevice failed: index %i", opts->tcpdirect_gpu_idx);
-    exit(70);
-  }
+  // unnecessary if CUDA_VISIBLE_DEVICES env var is set
+  // ret = cudaSetDevice(opts->tcpdirect_gpu_idx);
+  // if (ret != 0) {
+  //   printf("cudaSetDevice failed: index %i", opts->tcpdirect_gpu_idx);
+  //   exit(70);
+  // }
 
   cudaMalloc(&gpu_tx_mem_, alloc_size);
   unsigned int flag = 1;
@@ -216,6 +217,7 @@ int tcpdirect_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct
   if (!is_client) {
     /* TODO hardcoded num_queues */
     int num_queues = 15;
+    printf("Bind to queue %i\n", num_queues);
     struct dma_buf_pages_bind_rx_queue bind_cmd;
 
     strcpy(bind_cmd.ifname, opts->tcpdirect_link_name);
@@ -330,6 +332,12 @@ int udmabuf_setup_alloc(const struct options *opts, void **f_mbuf) {
             num_queues);
       exit(78);
     }
+
+    system("ethtool --set-priv-flags eth1 enable-header-split on");
+    system("ethtool --set-priv-flags eth1 enable-header-split off");
+	  system("ethtool --set-priv-flags eth1 enable-header-split on");
+    sleep(1);
+    printf("toggled header-split\n");
   }
 
   struct dma_buf_sync sync = { 0 };
