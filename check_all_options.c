@@ -108,6 +108,13 @@ void check_options_tcp_stream(struct options *opts, struct callbacks *cb)
                   "Must provide non-zero --tcpdirect-phys-len flag if GPU PCI address was provided.");
             // TODO check page-alignment
             // CHECK((CUdeviceptr)gpu_tx_mem_ % PAGE_SIZE == 0);
+
+            if (!opts->client) {
+                  CHECK(cb, opts->tcpdirect_src_ip,
+                        "Must provide source IP address for TCPDirect host.");
+                  CHECK(cb, opts->tcpdirect_dst_ip,
+                        "Must provide destination IP address for TCPDirect host.");
+            }
       }
 }
 

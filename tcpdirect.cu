@@ -174,6 +174,8 @@ int tcpdirect_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct
   void *gpu_tx_mem_;
   int gpu_mem_fd_;
   int dma_buf_fd_;
+  int q_start = opts->queue_start;
+  int q_num = opts->queue_num;
   std::unique_ptr<char[]> buf_;
   struct tcpdirect_cuda_mbuf *tmbuf;
   const char *gpu_pci_addr = opts->tcpd_gpu_pci_addr;  // "0000:04:00.0"
@@ -216,12 +218,11 @@ int tcpdirect_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct
   }
 
   if (!is_client) {
-    /* TODO hardcoded num_queues */
-    int num_queues = 15;
+    int num_queues = q_start + (t->index % q_num);
     printf("Bind to queue %i\n", num_queues);
     struct dma_buf_pages_bind_rx_queue bind_cmd;
 
-    strcpy(bind_cmd.ifname, "eth1"); // opts->tcpdirect_link_name
+    strcpy(bind_cmd.ifname, opts->tcpdirect_link_name);
     bind_cmd.rxq_idx = num_queues;
 
     ret = ioctl(gpu_mem_fd_, DMA_BUF_PAGES_BIND_RX, &bind_cmd);
@@ -231,12 +232,23 @@ int tcpdirect_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct
       exit(78);
     }
 
-    system("ethtool --set-priv-flags eth1 enable-strict-header-split on");
-    system("ethtool --set-rxfh-indir eth1 equal 8");
-    system("ethtool -N eth1 flow-type tcp4 src-ip 192.168.1.198 dst-ip 192.168.1.46 src-port 12345 dst-port 12345 queue 15");
-    printf("sleeping 1...\n");
-    sleep(1);
-    printf("toggled header-split\n");
+    // copied from socket.c#socket_connect_one()
+    int flow_idx = (t->flow_first + t->flow_count);
+    int source_port = flow_idx + opts->source_port;
+    char flow_steer_cmd[512];
+    sprintf(flow_steer_cmd,
+            "ethtool -N %s flow-type tcp4 src-ip %s dst-ip %s src-port %i dst-port %s queue %i",
+            opts->tcpdirect_link_name, opts->tcpdirect_src_ip, opts->tcpdirect_dst_ip, source_port, opts->port, num_queues);
+    ret = system(flow_steer_cmd);
+
+    // only running the below ethtool commands after last thread/flow is setup
+    if (flow_idx + flow_limit >= opts->num_flows) {
+      ret = ret | system("ethtool --set-priv-flags eth1 enable-strict-header-split on");
+      ret = ret | system("ethtool --set-priv-flags eth1 enable-header-split on");
+      ret = ret | system("ethtool --set-rxfh-indir eth1 equal 8");
+      printf("ethtool cmds returned %i, sleeping 1...\n", ret);
+      sleep(1);
+    }
   }
 
   *f_mbuf = tmbuf;
