@@ -199,6 +199,7 @@ int tcpdirect_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct
   // }
 
   cudaMalloc(&gpu_tx_mem_, alloc_size);
+  if (is_client) cudaMemset(gpu_tx_mem_, 'a', alloc_size);
   unsigned int flag = 1;
   cuPointerSetAttribute(&flag,
                         CU_POINTER_ATTRIBUTE_SYNC_MEMOPS,
@@ -441,8 +442,6 @@ int tcpdirect_send(int socket, void *buf, size_t n, int flags) {
   tmbuf = (struct tcpdirect_cuda_mbuf *)buf;
   gpu_mem_fd_ = tmbuf->gpu_mem_fd_;
   void *gpu_tx_mem_ = tmbuf->gpu_tx_mem_;
-
-  cudaMemset(gpu_tx_mem_, 'a', n);
 
   // memset(cmsg, 0, sizeof(struct cmsghdr));
 
