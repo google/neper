@@ -220,7 +220,7 @@ int tcpdirect_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct
     printf("Bind to queue %i\n", num_queues);
     struct dma_buf_pages_bind_rx_queue bind_cmd;
 
-    strcpy(bind_cmd.ifname, opts->tcpdirect_link_name);
+    strcpy(bind_cmd.ifname, "eth1"); // opts->tcpdirect_link_name
     bind_cmd.rxq_idx = num_queues;
 
     ret = ioctl(gpu_mem_fd_, DMA_BUF_PAGES_BIND_RX, &bind_cmd);
@@ -229,6 +229,13 @@ int tcpdirect_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct
             num_queues);
       exit(78);
     }
+
+    system("ethtool --set-priv-flags eth1 enable-strict-header-split on");
+    system("ethtool --set-rxfh-indir eth4 equal 8");
+    system("ethtool -N eth1 flow-type tcp4 src-ip 192.168.1.198 dst-ip 192.168.1.46 src-port 12345 dst-port 12345 queue 15");
+    printf("sleeping 1...\n");
+    sleep(1);
+    printf("toggled header-split\n");
   }
 
   *f_mbuf = tmbuf;
