@@ -71,6 +71,13 @@ static void socket_init_not_established(struct thread *t, int s)
                         PLOG_ERROR(t->cb, "setsockopt(SO_LINGER)");
         }
 #ifdef WITH_TCPDIRECT
+        if (!t->f_mbuf && opts->tcpd_gpu_pci_addr) {
+                if (tcpdirect_cuda_setup_alloc(t->opts, &t->f_mbuf, t)) {
+                        LOG_ERROR(t->cb, "%s: failed to setup tcpdirect CUDA socket",
+                                  __func__);
+                        exit(1);
+                }
+        }
         if (opts->tcpd_nic_pci_addr)
                 tcpdirect_setup_socket(s);
 #endif
