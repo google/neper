@@ -26,13 +26,32 @@ link_to_gpu_index = {
         "eth4": "6"
 }
 
+def run_pre_neper_cmds(dev: str):
+        cmds = [
+                f"ethtool --set-priv-flags {dev} enable-strict-header-split on",
+                f"ethtool --set-priv-flags {dev} enable-strict-header-split off",
+                f"ethtool --set-priv-flags {dev} enable-header-split off",
+                f"ethtool --set-rxfh-indir {dev} equal 16",
+                f"ethtool -K {dev} ntuple off",
+                f"ethtool --set-priv-flags {dev} enable-strict-header-split off",
+                f"ethtool --set-priv-flags {dev} enable-header-split off",
+                f"ethtool -K {dev} ntuple off",
+                f"ethtool --set-priv-flags {dev} enable-max-rx-buffer-size on",
+                f"ethtool -K {dev} ntuple on"
+        ]
+
+        for cmd in cmds:
+                subprocess.run(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+
 # adds flow-steering rules, e.x.
 # ethtool -N eth1 flow-type tcp4 ...
-def install_flow_steer_rules(dev, threads: int, src_port, port, src_ip, dst_ip)->list:
+def install_flow_steer_rules(dev, threads: int, src_port, port, src_ip, dst_ip, q_start, q_num)->list:
         subprocesses, rules = [], []
 
         for i in range(threads):
-                flow_steering_cmd = f"ethtool -N {dev} flow-type tcp4 src-ip {src_ip} dst-ip {dst_ip} src-port {src_port + i} dst-port {port} queue 15"
+                queue = q_start + (i % q_num)
+                flow_steering_cmd = f"ethtool -N {dev} flow-type tcp4 src-ip {src_ip} dst-ip {dst_ip} src-port {src_port + i} dst-port {port} queue {queue}"
+                debug(flow_steering_cmd)
                 sp = subprocess.run(flow_steering_cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
                 subprocesses.append(sp)
 
@@ -52,25 +71,25 @@ def del_flow_steer_rules(dev: str, rules: list):
         for rule in rules:
                 del_cmd = f"ethtool -N {dev} delete {rule}"
                 debug(f"[{dev}] deleting rule {rule}")
-                subprocess.run(del_cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                subprocess.run(del_cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
 
 # returns a 2-tuple of a Neper command and a dict of env vars
 def build_neper_cmd(neper_dir: str, is_client: bool, dev: str,
                     threads: int, flows: int,
                     cpu_list, buffer_size: int, phys_len: int,
                     nic_pci: str, gpu_pci: str,
-                    control_port, source_port, port, length, host_ip=None)->str:
+                    control_port, source_port, port, length, src_ip, dst_ip)->str:
 
         # TODO tcp_stream_cuda2 -> tcp_stream eventually
         cmd = (f"taskset --cpu-list {cpu_list} {neper_dir}/tcp_stream_cuda2 -T {threads} -F {flows} --tcpdirect-phys-len {phys_len}"
-                f" --port {port} --source-port {source_port} --control-port {control_port} --tcpdirect-gpu-idx {link_to_gpu_index[dev]}"
+                f" --port {port} --source-port {source_port} --control-port {control_port}"
                 f" --buffer-size {buffer_size} --tcpd-nic-pci-addr {nic_pci} --tcpd-gpu-pci-addr {gpu_pci} -l {length}")
 
         env = None
         if is_client:
-                cmd += f" -c -H {host_ip}"
+                cmd += f" -c -H {dst_ip}"
         else:
-                cmd = cmd + f" --tcpdirect-link-name {dev}"
+                cmd = cmd + f" --tcpdirect-link-name {dev} --tcpdirect-src-ip {src_ip} --tcpdirect-dst-ip {dst_ip}"
                 env = {"CUDA_VISIBLE_DEVICES": link_to_gpu_index[dev]}
 
         return (cmd, env)
@@ -97,7 +116,9 @@ def parse_subprocess_outputs(subprocesses):
                 cur_hash = dict()
 
                 sp.wait()
+                debug(sp.stderr.read())
                 for line in sp.stdout.read().split("\n"):
+                        debug(line)
                         stripped_line = line.strip()
                         if "=" in stripped_line:
                                 parsed_line = stripped_line.split("=")
@@ -127,6 +148,15 @@ if __name__ == "__main__":
         parser.add_argument("-H", "--hosts", required=True,
                             help="comma-delimited list of host IP addresses")
 
+        parser.add_argument("--q-start", default="8", help="starting queue for flow-steering rules", type=int)
+        parser.add_argument("--q-num", default="4", help=("number of queues for flow-steering rules"
+                                                          " (i.e. if q-start=8 and q-num=4, 2"
+                                                          " flow-steering rules each will be"
+                                                          " installed for queues [8-11])"),
+                                                          type=int)
+
+        parser.add_argument("--dry-run", default=False, action="store_true")
+
         parser.add_argument("-l", "--length", default=10)
         parser.add_argument("--log", default="WARNING")
 
@@ -136,21 +166,27 @@ if __name__ == "__main__":
 
         devices = args.devices.split(",")
         hosts = args.hosts.split(",")
+        src_ips = args.src_ips.split(",")
 
         dev_to_rule = dict()
         # setup flow_steering rules
         if not args.client:
                 info("setting up flow-steering rules")
-                src_ips = args.src_ips.split(",")
+                # src_ips = args.src_ips.split(",")
 
-                for i in range(len(devices)):
-                        control_port = args.control_port + i
-                        starting_port = i * args.threads + args.source_port
-                        dev = devices[i]
-                        src_ip, dst_ip = src_ips[i], hosts[i]
+                for i, dev in enumerate(devices):
+                        if not args.dry_run:
+                                run_pre_neper_cmds(dev)
 
-                        rules = install_flow_steer_rules(dev, args.threads, starting_port, args.port, src_ip, dst_ip)
-                        dev_to_rule[dev] = rules
+                        # TODO flow-steering rules installed in Neper now
+                        # control_port = args.control_port + i
+                        # starting_port = i * args.threads + args.source_port
+                        # dev = devices[i]
+                        # src_ip, dst_ip = src_ips[i], hosts[i]
+
+                        # # TODO port_start q_start, q_num
+                        # rules = install_flow_steer_rules(dev, args.threads, starting_port, args.port, src_ip, dst_ip, args.q_start, args.q_num)
+                        # dev_to_rule[dev] = rules
 
         cmds = []
         debug(f"running on {devices}")
@@ -161,25 +197,28 @@ if __name__ == "__main__":
                 ctrl_port = int(args.control_port) + i
                 src_port = int(args.source_port) + i*int(args.flows)
                 is_client = args.client
-                host_ip = hosts[i] if is_client else None
-                cpu_range = get_cpu_range(2, 3, i)
+                src_ip, dst_ip = src_ips[i], hosts[i]
+                # TODO 8 CPUs is hard-coded. Probably should change to args.flows
+                cpu_range = get_cpu_range(2 + (52 if i >= 2 else 0), 8, i)
 
                 cmd_env = build_neper_cmd(args.neper_dir, is_client, dev,
                                       args.threads, args.flows, cpu_range, args.buffer_size,
                                       args.phys_len, nic_pci, gpu_pci,
-                                      ctrl_port, src_port, args.port, args.length, host_ip)
+                                      ctrl_port, src_port, args.port, args.length, src_ip, dst_ip)
 
                 cmds.append(cmd_env)
 
         debug(cmds)
-        sp_list = run_cmds(cmds)
-        debug("parsing subprocesses outputs")
-        for dev, i in zip(devices, parse_subprocess_outputs(sp_list)):
-                if not args.client:
-                        print(f"[{dev}] Throughput (Mb/s): {i['throughput']}")
+        if not args.dry_run:
+                sp_list = run_cmds(cmds)
+                debug("parsing subprocesses outputs")
+                for dev, i in zip(devices, parse_subprocess_outputs(sp_list)):
+                        if not args.client:
+                                print(f"[{dev}] Throughput (Mb/s): {i['throughput']}")
 
-        # delete flow-steering rules
-        if not args.client:
-                info("deleting flow-steering rules")
-                for dev in dev_to_rule:
-                        del_flow_steer_rules(dev, dev_to_rule[dev])
+                # TODO remove, flow-steering rules are installed via Neper now
+                # delete flow-steering rules
+                # if not args.client:
+                #         info("deleting flow-steering rules")
+                #         for dev in dev_to_rule:
+                #                 del_flow_steer_rules(dev, dev_to_rule[dev])
