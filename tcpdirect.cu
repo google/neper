@@ -231,7 +231,7 @@ int tcpdirect_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct
     }
 
     system("ethtool --set-priv-flags eth1 enable-strict-header-split on");
-    system("ethtool --set-rxfh-indir eth4 equal 8");
+    system("ethtool --set-rxfh-indir eth1 equal 8");
     system("ethtool -N eth1 flow-type tcp4 src-ip 192.168.1.198 dst-ip 192.168.1.46 src-port 12345 dst-port 12345 queue 15");
     printf("sleeping 1...\n");
     sleep(1);
