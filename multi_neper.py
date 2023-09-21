@@ -185,7 +185,8 @@ if __name__ == "__main__":
                         # src_ip, dst_ip = src_ips[i], hosts[i]
 
                         # # TODO port_start q_start, q_num
-                        # rules = install_flow_steer_rules(dev, args.threads, starting_port, args.port, src_ip, dst_ip, args.q_start, args.q_num)
+                        # dst_port = args.port + i
+                        # rules = install_flow_steer_rules(dev, args.threads, starting_port, dst_port, src_ip, dst_ip, args.q_start, args.q_num)
                         # dev_to_rule[dev] = rules
 
         cmds = []
@@ -194,8 +195,9 @@ if __name__ == "__main__":
                 nic_pci = link_to_nic_pci_addr[dev]
                 gpu_pci = link_to_gpu_pci_addr[dev]
 
-                ctrl_port = int(args.control_port) + i
-                src_port = int(args.source_port) + i*int(args.flows)
+                ctrl_port = args.control_port + i
+                src_port = args.source_port + i * args.flows
+                dst_port = args.port + i
                 is_client = args.client
                 src_ip, dst_ip = src_ips[i], hosts[i]
                 # TODO 8 CPUs is hard-coded. Probably should change to args.flows
@@ -204,7 +206,7 @@ if __name__ == "__main__":
                 cmd_env = build_neper_cmd(args.neper_dir, is_client, dev,
                                       args.threads, args.flows, cpu_range, args.buffer_size,
                                       args.phys_len, nic_pci, gpu_pci,
-                                      ctrl_port, src_port, args.port, args.length, src_ip, dst_ip)
+                                      ctrl_port, src_port, dst_port, args.length, src_ip, dst_ip)
 
                 cmds.append(cmd_env)
 

@@ -243,9 +243,13 @@ int tcpdirect_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct
 
     // only running the below ethtool commands after last thread/flow is setup
     if (flow_idx + t->flow_limit >= opts->num_flows) {
-      ret = ret | system("ethtool --set-priv-flags eth1 enable-strict-header-split on");
-      ret = ret | system("ethtool --set-priv-flags eth1 enable-header-split on");
-      ret = ret | system("ethtool --set-rxfh-indir eth1 equal 8");
+      char ethtool_cmd[512];
+      sprintf(ethtool_cmd, "ethtool --set-priv-flags %s enable-strict-header-split on", opts->tcpdirect_link_name);
+      ret = ret | system(ethtool_cmd);
+      sprintf(ethtool_cmd, "ethtool --set-priv-flags %s enable-header-split on", opts->tcpdirect_link_name);
+      ret = ret | system(ethtool_cmd);
+      sprintf(ethtool_cmd, "ethtool --set-rxfh-indir %s equal 8", opts->tcpdirect_link_name);
+      ret = ret | system(ethtool_cmd);
       printf("ethtool cmds returned %i, sleeping 1...\n", ret);
       sleep(1);
     }
