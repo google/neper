@@ -78,7 +78,8 @@ def build_neper_cmd(neper_dir: str, is_client: bool, dev: str,
                     threads: int, flows: int,
                     cpu_list, buffer_size: int, phys_len: int,
                     nic_pci: str, gpu_pci: str,
-                    control_port, source_port, port, length, src_ip, dst_ip)->str:
+                    control_port, source_port, port, length,
+                    src_ip, dst_ip, queue_start, queue_num)->str:
 
         # TODO tcp_stream_cuda2 -> tcp_stream eventually
         cmd = (f"taskset --cpu-list {cpu_list} {neper_dir}/tcp_stream_cuda2 -T {threads} -F {flows} --tcpdirect-phys-len {phys_len}"
@@ -89,7 +90,8 @@ def build_neper_cmd(neper_dir: str, is_client: bool, dev: str,
         if is_client:
                 cmd += f" -c -H {dst_ip}"
         else:
-                cmd = cmd + f" --tcpdirect-link-name {dev} --tcpdirect-src-ip {src_ip} --tcpdirect-dst-ip {dst_ip}"
+                cmd = cmd + (f" --tcpdirect-link-name {dev} --tcpdirect-src-ip {src_ip} --tcpdirect-dst-ip {dst_ip}"
+                             f" --queue-start {queue_start} --queue-num {queue_num}")
                 env = {"CUDA_VISIBLE_DEVICES": link_to_gpu_index[dev]}
 
         return (cmd, env)
@@ -206,7 +208,8 @@ if __name__ == "__main__":
                 cmd_env = build_neper_cmd(args.neper_dir, is_client, dev,
                                       args.threads, args.flows, cpu_range, args.buffer_size,
                                       args.phys_len, nic_pci, gpu_pci,
-                                      ctrl_port, src_port, dst_port, args.length, src_ip, dst_ip)
+                                      ctrl_port, src_port, dst_port, args.length, src_ip, dst_ip,
+                                      args.q_start, args.q_num)
 
                 cmds.append(cmd_env)
 
