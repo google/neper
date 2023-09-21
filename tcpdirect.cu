@@ -184,7 +184,7 @@ int tcpdirect_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct
   size_t alloc_size = opts->tcpdirect_phys_len;  // std::max(message_size_, (unsigned long)GPUMEM_MINSZ)
 
   tmbuf =
-    (struct tcpdirect_cuda_mbuf *)calloc(1, sizeof(struct tcpdirect_udma_mbuf));
+    (struct tcpdirect_cuda_mbuf *)calloc(1, sizeof(struct tcpdirect_cuda_mbuf));
   if (!tmbuf) {
     exit(EXIT_FAILURE);
   }
@@ -242,7 +242,7 @@ int tcpdirect_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct
     ret = system(flow_steer_cmd);
 
     // only running the below ethtool commands after last thread/flow is setup
-    if (flow_idx + flow_limit >= opts->num_flows) {
+    if (flow_idx + t->flow_limit >= opts->num_flows) {
       ret = ret | system("ethtool --set-priv-flags eth1 enable-strict-header-split on");
       ret = ret | system("ethtool --set-priv-flags eth1 enable-header-split on");
       ret = ret | system("ethtool --set-rxfh-indir eth1 equal 8");
@@ -571,12 +571,14 @@ int tcpdirect_recv(int socket, void *f_mbuf, size_t n, int flags) {
             devmemvec->frag_token,
             total_received);
 
-    char mybuf[devmemvec->frag_size];
-    cudaMemcpy(mybuf,
-               (char *)tmbuf->gpu_tx_mem_ + devmemvec->frag_offset,
-               devmemvec->frag_size,
-               cudaMemcpyDeviceToHost);
-    printf("cudaFrag: %.25s\n", mybuf);
+    // if (devmemvec->frag_token % 10 == 0) {
+    //   char mybuf[devmemvec->frag_size];
+    //   cudaMemcpy(mybuf,
+    //             (char *)tmbuf->gpu_tx_mem_ + devmemvec->frag_offset,
+    //             devmemvec->frag_size,
+    //             cudaMemcpyDeviceToHost);
+    //   printf("cudaFrag: %.25s\n", mybuf);
+    // }
 
     // sync.flags = DMA_BUF_SYNC_READ | DMA_BUF_SYNC_END;
     // ioctl(buf, DMA_BUF_IOCTL_SYNC, &sync);

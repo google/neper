@@ -149,7 +149,6 @@ struct flags_parser *add_flags_tcp_stream(struct flags_parser *fp)
         DEFINE_FLAG(fp, const char *,                tcpdirect_src_ip, 0, 0, "Set the src ip address for tcpdirect");
         DEFINE_FLAG(fp, const char *,                tcpdirect_dst_ip, 0, 0, "Set the dst ip address for tcpdirect");
         DEFINE_FLAG(fp, const char *,                tcpdirect_link_name, "eth1", 0, "Link name to bind DMA buffer_pages for Rx");
-        DEFINE_FLAG(fp, int,                         tcpdirect_gpu_idx, 1, 0, "GPU index provided to cudaSetDevice");
         DEFINE_FLAG(fp, int,                         queue_start, 8, 0, "Queue to start flow-steering at");
         DEFINE_FLAG(fp, int,                         queue_num, 4, 0, "Number of queues to flow-steer to");
 #endif
