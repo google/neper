@@ -131,7 +131,7 @@ def parse_subprocess_outputs(subprocesses):
 if __name__ == "__main__":
         parser = argparse.ArgumentParser()
 
-        parser.add_argument("--neper-dir", help="directory containing Neper binaries", default="/tmp/neper")
+        parser.add_argument("--neper-dir", help="directory containing Neper binaries", default=".")
         parser.add_argument("--threads", help="number of threads per Neper instance", default="4", type=int)
         parser.add_argument("--flows", help="number of flows per Neper instance", default="4", type=int)
         parser.add_argument("--source-port", default="12345", type=int)
