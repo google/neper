@@ -24,6 +24,10 @@
 #include "flow.h"
 #include "thread.h"
 
+#ifndef MSG_ZEROCOPY
+#define MSG_ZEROCOPY	0x4000000
+#endif
+
 #define MIN_RX_BUFFER_TOTAL_SIZE (1 << 28)
 #define GPUMEM_ALIGNMENT (1UL << 21)
 #define GPUMEM_MINSZ 0x400000
@@ -31,9 +35,6 @@
 #define PAGE_SIZE (1 << PAGE_SHIFT)
 
 #define multiplier (1 << 16)
-
-#define SO_DEVMEM_OFFSET 99
-#define SCM_DEVMEM_OFFSET SO_DEVMEM_OFFSET
 
 #define TEST_PREFIX "ncdevmem"
 #define NUM_PAGES 16000
@@ -111,10 +112,10 @@ int memfd_create(const char *name, unsigned int flags)
 
 int tcpdirect_setup_socket(int socket) {
   const int one = 1;
-  if (setsockopt(socket, SOL_SOCKET,
-                 SO_REUSEADDR | SO_REUSEPORT | SO_ZEROCOPY,
-                 &one,
-                 sizeof(one))) {
+  if (setsockopt(socket, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one))
+      || setsockopt(socket, SOL_SOCKET, SO_REUSEPORT, &one, sizeof(one))
+      || setsockopt(socket, SOL_SOCKET, SO_ZEROCOPY, &one, sizeof(one))
+     ) {
     perror("tcpdirect_setup_socket");
     exit(EXIT_FAILURE);
   }
@@ -447,9 +448,8 @@ int tcpdirect_udma_send(int socket, void *f_mbuf, size_t n, int flags) {
 int tcpdirect_send(int socket, void *buf, size_t n, int flags) {
   int gpu_mem_fd_;
   struct iovec iov;
-  struct msghdr msg = {0};
+  struct msghdr msg;
   struct cmsghdr *cmsg;
-  char buf_dummy[n];
   char offsetbuf[CMSG_SPACE(sizeof(uint32_t) * 2)];
   struct tcpdirect_cuda_mbuf *tmbuf;
 
@@ -459,9 +459,10 @@ int tcpdirect_send(int socket, void *buf, size_t n, int flags) {
   gpu_mem_fd_ = tmbuf->gpu_mem_fd_;
   void *gpu_tx_mem_ = tmbuf->gpu_tx_mem_;
 
+  memset(&msg, 0, sizeof(msg));
   // memset(cmsg, 0, sizeof(struct cmsghdr));
 
-  iov.iov_base = buf_dummy;
+  iov.iov_base = NULL;
   iov.iov_len = n;
 
   msg.msg_iov = &iov;
@@ -475,6 +476,7 @@ int tcpdirect_send(int socket, void *buf, size_t n, int flags) {
   cmsg->cmsg_type = SCM_DEVMEM_OFFSET;
   cmsg->cmsg_len = CMSG_LEN(sizeof(int) * 2);
   *((int*)CMSG_DATA(cmsg)) = gpu_mem_fd_;
+  ((int *)CMSG_DATA(cmsg))[1] = 0;
 
   ssize_t bytes_sent = sendmsg(socket, &msg, MSG_ZEROCOPY | MSG_DONTWAIT);
   if (bytes_sent < 0 && errno != EWOULDBLOCK && errno != EAGAIN) {

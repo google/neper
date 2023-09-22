@@ -86,13 +86,12 @@ def build_neper_cmd(neper_dir: str, is_client: bool, dev: str,
                 f" --port {port} --source-port {source_port} --control-port {control_port}"
                 f" --buffer-size {buffer_size} --tcpd-nic-pci-addr {nic_pci} --tcpd-gpu-pci-addr {gpu_pci} -l {length}")
 
-        env = None
+        env = {"CUDA_VISIBLE_DEVICES": link_to_gpu_index[dev]}
         if is_client:
                 cmd += f" -c -H {dst_ip}"
         else:
                 cmd = cmd + (f" --tcpdirect-link-name {dev} --tcpdirect-src-ip {src_ip} --tcpdirect-dst-ip {dst_ip}"
                              f" --queue-start {queue_start} --queue-num {queue_num}")
-                env = {"CUDA_VISIBLE_DEVICES": link_to_gpu_index[dev]}
 
         return (cmd, env)
 
