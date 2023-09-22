@@ -568,14 +568,14 @@ int tcpdirect_recv(int socket, void *f_mbuf, size_t n, int flags) {
     //   exit(1);
     // }
     total_received += devmemvec->frag_size;
-    printf("\n\nreceived frag_page=%u, in_page_offset=%u,"
-            " frag_offset=%u, frag_size=%u, token=%u"
-            " total_received=%lu\n",
-            devmemvec->frag_offset >> PAGE_SHIFT,
-            devmemvec->frag_offset % PAGE_SIZE,
-            devmemvec->frag_offset, devmemvec->frag_size,
-            devmemvec->frag_token,
-            total_received);
+    // printf("\n\nreceived frag_page=%u, in_page_offset=%u,"
+    //         " frag_offset=%u, frag_size=%u, token=%u"
+    //         " total_received=%lu\n",
+    //         devmemvec->frag_offset >> PAGE_SHIFT,
+    //         devmemvec->frag_offset % PAGE_SIZE,
+    //         devmemvec->frag_offset, devmemvec->frag_size,
+    //         devmemvec->frag_token,
+    //         total_received);
 
     // if (devmemvec->frag_token % 10 == 0) {
     //   char mybuf[devmemvec->frag_size];

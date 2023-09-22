@@ -201,8 +201,9 @@ if __name__ == "__main__":
                 dst_port = args.port + i
                 is_client = args.client
                 src_ip, dst_ip = src_ips[i], hosts[i]
-                # TODO 8 CPUs is hard-coded. Probably should change to args.flows
-                cpu_range = get_cpu_range(2 + (52 if i >= 2 else 0), 8, i)
+
+                # TODO should CPU range be configurable by the user?
+                cpu_range = get_cpu_range(2 + (52 if i >= 2 else 0), args.threads, i)
 
                 cmd_env = build_neper_cmd(args.neper_dir, is_client, dev,
                                       args.threads, args.flows, cpu_range, args.buffer_size,
