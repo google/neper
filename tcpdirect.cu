@@ -110,6 +110,30 @@ int memfd_create(const char *name, unsigned int flags)
 	return syscall(__NR_memfd_create, name, flags);
 }
 
+/* Fills buf of size n with a repeating sequence of 1 to 111 inclusive
+ */
+void fill_buffer(void *buf, size_t n) {
+#define BUFSIZE 3996
+  unsigned char src_buf[BUFSIZE];
+  int ptr = 0, i = 0;
+
+  while (i < BUFSIZE) {
+    src_buf[i] = (i % LAST_PRIME) + 1;
+    i++;
+  }
+
+  while (ptr*BUFSIZE + BUFSIZE < n) {
+    cudaMemcpy((char *)buf + ptr*BUFSIZE, &src_buf, BUFSIZE, cudaMemcpyHostToDevice);
+    ptr++;
+  }
+
+  i = ptr*BUFSIZE;
+  while (i < n) {
+    cudaMemset((char *)buf + i, (i % LAST_PRIME) + 1, 1);
+    i++;
+  }
+}
+
 int tcpdirect_setup_socket(int socket) {
   const int one = 1;
   if (setsockopt(socket, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one))
@@ -177,12 +201,10 @@ int tcpdirect_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct
   int dma_buf_fd_;
   int q_start = opts->queue_start;
   int q_num = opts->queue_num;
-  std::unique_ptr<char[]> buf_;
   struct tcpdirect_cuda_mbuf *tmbuf;
   const char *gpu_pci_addr = opts->tcpd_gpu_pci_addr;  // "0000:04:00.0"
   const char *nic_pci_addr = opts->tcpd_nic_pci_addr;  // "0000:06:00.0"
-  size_t message_size_ = 4096000; // TODO param this
-  size_t alloc_size = opts->tcpdirect_phys_len;  // std::max(message_size_, (unsigned long)GPUMEM_MINSZ)
+  size_t alloc_size = opts->tcpdirect_phys_len;
 
   tmbuf =
     (struct tcpdirect_cuda_mbuf *)calloc(1, sizeof(struct tcpdirect_cuda_mbuf));
@@ -202,12 +224,13 @@ int tcpdirect_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct
   // }
 
   cudaMalloc(&gpu_tx_mem_, alloc_size);
-  if (is_client) cudaMemset(gpu_tx_mem_, 'a', alloc_size);
+  if (is_client) {
+    fill_buffer(gpu_tx_mem_, alloc_size);
+  }
   unsigned int flag = 1;
   cuPointerSetAttribute(&flag,
                         CU_POINTER_ATTRIBUTE_SYNC_MEMOPS,
                         (CUdeviceptr)gpu_tx_mem_);
-  buf_.reset(new char[message_size_]);
 
   gpu_mem_fd_ = get_gpumem_dmabuf_pages_fd(gpu_pci_addr, nic_pci_addr,
                                            gpu_tx_mem_, alloc_size,
