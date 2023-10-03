@@ -287,6 +287,7 @@ int tcpdirect_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct
   tmbuf->dma_buf_fd_ = dma_buf_fd_;
   tmbuf->gpu_tx_mem_ = gpu_tx_mem_;
   tmbuf->cpy_buffer = malloc(opts->buffer_size);
+  tmbuf->vectors = new std::vector<devmemvec>();
   tmbuf->tokens = new std::vector<devmemtoken>();
   return 0;
 }
@@ -530,12 +531,14 @@ int tcpdirect_recv(int socket, void *f_mbuf, size_t n, int flags, struct thread 
   size_t total_received = 0;
   unsigned char *cpy_buffer;
   const struct options *opts = t->opts;
+  std::vector<devmemvec> *vectors;
   std::vector<devmemtoken> *tokens;
 
   if (!f_mbuf) return -1;
 
   tmbuf = (struct tcpdirect_cuda_mbuf *)f_mbuf;
   cpy_buffer = (unsigned char *)tmbuf->cpy_buffer;
+  vectors = (std::vector<devmemvec> *)tmbuf->vectors;
   tokens = (std::vector<devmemtoken> *)tmbuf->tokens;
 
   client_fd = socket;
@@ -613,7 +616,7 @@ int tcpdirect_recv(int socket, void *f_mbuf, size_t n, int flags, struct thread 
 
     // sync.flags = DMA_BUF_SYNC_READ | DMA_BUF_SYNC_END;
     // ioctl(buf, DMA_BUF_IOCTL_SYNC, &sync);
-
+    vectors->emplace_back(*devmemvec);
     tokens->push_back(token);
     // munmap(buf_mem, n);
   }
@@ -629,7 +632,19 @@ int tcpdirect_recv(int socket, void *f_mbuf, size_t n, int flags, struct thread 
      * the userspace buffer, so it's gated by a flag
      */
     if (opts->tcpd_rx_cpy || opts->tcpd_validate) {
-      cudaMemcpy(cpy_buffer, tmbuf->gpu_tx_mem_, buffer_size, cudaMemcpyDeviceToHost);
+      for (int idx = 0; idx < vectors->size(); idx++) {
+        struct devmemvec vec = (*vectors)[idx];
+        struct devmemtoken token = (*tokens)[idx];
+
+        /* copy each fragment to the cpy_buffer in order, i.e.
+         * 1st fragment will occuply bytes [0-4095], 2nd fragment will
+         * occupy bytes [4096-8191], etc.
+         */
+        cudaMemcpy(cpy_buffer + (vec.frag_token - 1) * PAGE_SIZE,
+                   (char *)tmbuf->gpu_tx_mem_ + vec.frag_offset,
+                   vec.frag_size,
+                   cudaMemcpyDeviceToHost);
+      }
 
       /* Ensure the sequence is what we expect:
        * a repeating sequence of 1 to LAST_PRIME inclusive
@@ -646,6 +661,7 @@ int tcpdirect_recv(int socket, void *f_mbuf, size_t n, int flags, struct thread 
                   i,
                   expected_val,
                   cpy_buffer[i]);
+            break;
           }
           i++;
         }
@@ -659,6 +675,7 @@ int tcpdirect_recv(int socket, void *f_mbuf, size_t n, int flags, struct thread 
       perror("DONTNEED failed");
       exit(1);
     }
+    vectors->clear();
     tokens->clear();
     tmbuf->bytes_received = 0;
   }
@@ -671,6 +688,8 @@ int cuda_flow_cleanup(void *f_mbuf) {
   close(t_mbuf->dma_buf_fd_);
   cudaFree(t_mbuf->gpu_tx_mem_);
   free(t_mbuf->cpy_buffer);
+  free(t_mbuf->tokens);
+  free(t_mbuf->vectors);
   return 0;
 }
 #endif /* #ifdef WITH_TCPDIRECT */

@@ -44,6 +44,7 @@ struct tcpdirect_cuda_mbuf {
         void *cpy_buffer;
         size_t bytes_received;
         void *tokens;
+        void *vectors;
 };
 
 typedef void (*flow_handler)(struct flow *, uint32_t);
