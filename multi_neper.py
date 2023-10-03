@@ -79,7 +79,8 @@ def build_neper_cmd(neper_dir: str, is_client: bool, dev: str,
                     cpu_list, buffer_size: int, phys_len: int,
                     nic_pci: str, gpu_pci: str,
                     control_port, source_port, port, length,
-                    src_ip, dst_ip, queue_start, queue_num)->str:
+                    src_ip, dst_ip, queue_start, queue_num,
+                    tcpd_validate, tcpd_rx_cpy)->str:
 
         # TODO tcp_stream_cuda2 -> tcp_stream eventually
         cmd = (f"taskset --cpu-list {cpu_list} {neper_dir}/tcp_stream_cuda2 -T {threads} -F {flows} --tcpdirect-phys-len {phys_len}"
@@ -92,6 +93,10 @@ def build_neper_cmd(neper_dir: str, is_client: bool, dev: str,
         else:
                 cmd = cmd + (f" --tcpdirect-link-name {dev} --tcpdirect-src-ip {src_ip} --tcpdirect-dst-ip {dst_ip}"
                              f" --queue-start {queue_start} --queue-num {queue_num}")
+                if tcpd_validate:
+                        cmd += " --tcpd-validate"
+                if tcpd_rx_cpy:
+                        cmd += " --tcpd-rx-cpy"
 
         return (cmd, env)
 
@@ -155,6 +160,8 @@ if __name__ == "__main__":
                                                           " flow-steering rules each will be"
                                                           " installed for queues [8-11])"),
                                                           type=int)
+        parser.add_argument("--tcpd-validate", action="store_true")
+        parser.add_argument("--tcpd-rx-cpy", action="store_true")
 
         parser.add_argument("--dry-run", default=False, action="store_true")
 
@@ -209,7 +216,7 @@ if __name__ == "__main__":
                                       args.threads, args.flows, cpu_range, args.buffer_size,
                                       args.phys_len, nic_pci, gpu_pci,
                                       ctrl_port, src_port, dst_port, args.length, src_ip, dst_ip,
-                                      args.q_start, args.q_num)
+                                      args.q_start, args.q_num, args.tcpd_validate, args.tcpd_rx_cpy)
 
                 cmds.append(cmd_env)
 

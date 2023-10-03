@@ -17,7 +17,7 @@ int cuda_flow_cleanup(void *f_mbuf);
 int udmabuf_setup_alloc(const struct options *opts, void **f_mbuf);
 int tcpdirect_send(int socket, void *buf, size_t n, int flags);
 int tcpdirect_udma_send(int fd, void *buf, size_t n, int flags);
-int tcpdirect_recv(int fd, void *f_mbuf, size_t n, int flags);
+int tcpdirect_recv(int fd, void *f_mbuf, size_t n, int flags, struct thread *t);
 
 #if __cplusplus
 }

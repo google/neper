@@ -142,6 +142,8 @@ struct flags_parser *add_flags_tcp_stream(struct flags_parser *fp)
         DEFINE_FLAG(fp, bool,          enable_tcp_maerts,    false,   'M', "Enables TCP_MAERTS test (server writes and client reads). It overrides enable_read, and enable_write");
         DEFINE_FLAG(fp, bool,          async_connect,   false,   0,  "use non blocking connect");
 #ifdef WITH_TCPDIRECT
+        DEFINE_FLAG(fp, bool,                        tcpd_validate, false, 0, "Validates that received data is a repeating sequence of 1 to 111 inclusive");
+        DEFINE_FLAG(fp, bool,                        tcpd_rx_cpy, false, 0, "After the CUDA buffer is filled to buffer_size, calls cudaMemcpy to a userspace buffer");
         DEFINE_FLAG(fp, const char *,  tcpd_nic_pci_addr, 0,     0,   "NIC PCI addr, e.x. 0000:06:00.0");
         DEFINE_FLAG(fp, const char *,  tcpd_gpu_pci_addr, 0,     0,   "GPU PCI addr, e.x. 0000:04:00.0");
         DEFINE_FLAG(fp, unsigned long long,          tcpdirect_phys_addr, 0, 0, "Set the remote memory physical address for tcpdirect, e.x. 0000:06:00.0");

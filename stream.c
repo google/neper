@@ -110,7 +110,8 @@ void stream_handler(struct flow *f, uint32_t events)
                                 if (t->opts->tcpd_nic_pci_addr)
                                         n = tcpdirect_recv(fd, mbuf,
                                                            opts->buffer_size,
-                                                           opts->recv_flags);
+                                                           opts->recv_flags,
+                                                           t);
                                 else
 #endif
                                 n = recv(fd, mbuf, opts->buffer_size,

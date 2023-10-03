@@ -107,6 +107,8 @@ struct options {
 
         /* tcp_stream */
 #ifdef WITH_TCPDIRECT
+        bool tcpd_validate;
+        bool tcpd_rx_cpy;
         const char *tcpd_nic_pci_addr;
         const char *tcpd_gpu_pci_addr;
         unsigned long long tcpdirect_phys_addr;

@@ -109,7 +109,12 @@ void check_options_tcp_stream(struct options *opts, struct callbacks *cb)
             // TODO check page-alignment
             // CHECK((CUdeviceptr)gpu_tx_mem_ % PAGE_SIZE == 0);
 
-            if (!opts->client) {
+            if (opts->client) {
+                  CHECK(cb, !opts->tcpd_validate,
+                        "Validation only allowed on hosts.");
+                  CHECK(cb, !opts->tcpd_rx_cpy,
+                        "Copying CUDA buffer to userspace only allowed on hosts.");
+            } else {
                   CHECK(cb, opts->tcpdirect_src_ip,
                         "Must provide source IP address for TCPDirect host.");
                   CHECK(cb, opts->tcpdirect_dst_ip,
