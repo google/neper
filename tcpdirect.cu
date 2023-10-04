@@ -115,7 +115,7 @@ int memfd_create(const char *name, unsigned int flags)
 
 /* Fills buf of size n with a repeating sequence of 1 to 111 inclusive
  */
-void fill_buffer(void *buf, size_t n) {
+void fill_tx_buffer(void *buf, size_t n) {
 #define BUFSIZE 3996
   unsigned char src_buf[BUFSIZE];
   int ptr = 0, i = 0;
@@ -228,7 +228,8 @@ int tcpdirect_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct
 
   cudaMalloc(&gpu_tx_mem_, alloc_size);
   if (is_client) {
-    fill_buffer(gpu_tx_mem_, alloc_size);
+    fill_tx_buffer(gpu_tx_mem_, alloc_size);
+    cudaDeviceSynchronize();
   }
   unsigned int flag = 1;
   cuPointerSetAttribute(&flag,
@@ -289,6 +290,8 @@ int tcpdirect_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct
   tmbuf->cpy_buffer = malloc(opts->buffer_size);
   tmbuf->vectors = new std::vector<devmemvec>();
   tmbuf->tokens = new std::vector<devmemtoken>();
+  tmbuf->bytes_received = 0;
+  tmbuf->bytes_sent = 0;
   return 0;
 }
 
@@ -492,7 +495,7 @@ int tcpdirect_send(int socket, void *buf, size_t n, int flags) {
   // memset(cmsg, 0, sizeof(struct cmsghdr));
 
   iov.iov_base = NULL;
-  iov.iov_len = n;
+  iov.iov_len = n - tmbuf->bytes_sent;
 
   msg.msg_iov = &iov;
   msg.msg_iovlen = 1;
@@ -505,7 +508,7 @@ int tcpdirect_send(int socket, void *buf, size_t n, int flags) {
   cmsg->cmsg_type = SCM_DEVMEM_OFFSET;
   cmsg->cmsg_len = CMSG_LEN(sizeof(int) * 2);
   *((int*)CMSG_DATA(cmsg)) = gpu_mem_fd_;
-  ((int *)CMSG_DATA(cmsg))[1] = 0;
+  ((int *)CMSG_DATA(cmsg))[1] = (int)tmbuf->bytes_sent;
 
   ssize_t bytes_sent = sendmsg(socket, &msg, MSG_ZEROCOPY | MSG_DONTWAIT);
   if (bytes_sent < 0 && errno != EWOULDBLOCK && errno != EAGAIN) {
@@ -517,6 +520,10 @@ int tcpdirect_send(int socket, void *buf, size_t n, int flags) {
     perror("sendmsg() sent 0 bytes. Something is wrong.\n");
     exit(EXIT_FAILURE);
   }
+
+  tmbuf->bytes_sent += bytes_sent;
+  if (tmbuf->bytes_sent == n)
+    tmbuf->bytes_sent = 0;
 
   return bytes_sent;
 }

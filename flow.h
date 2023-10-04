@@ -43,6 +43,7 @@ struct tcpdirect_cuda_mbuf {
         void *gpu_tx_mem_;
         void *cpy_buffer;
         size_t bytes_received;
+        size_t bytes_sent;
         void *tokens;
         void *vectors;
 };
