@@ -267,7 +267,7 @@ int tcpdirect_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct
 
     char flow_steer_cmd[512];
     sprintf(flow_steer_cmd,
-            "ethtool -N %s flow-type tcp4 src-ip %s dst-ip %s src-port %i dst-port %s queue %i",
+            "ethtool -N %s flow-type tcp4 src-ip %s dst-ip %s src-port %i dst-port %i queue %i",
             opts->tcpdirect_link_name, opts->tcpdirect_src_ip, opts->tcpdirect_dst_ip, src_port, dst_port, num_queues);
     ret = system(flow_steer_cmd);
 
