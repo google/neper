@@ -254,6 +254,24 @@ void socket_listen(struct thread *t)
         struct addrinfo *ai = getaddrinfo_or_die(opts->host, opts->port, &hints,
                                                  cb);
         int port = atoi(opts->port);
+#ifdef WITH_TCPDIRECT
+        /* TCPDirect:
+         * Since each thread has a CUDA buffer, and
+         * flow-steering rules are required, threads, TCP connections, and
+         * CUDA buffers need to be 1:1:1.
+         *
+         * We enforce that by co-opting the num_ports option.
+         *
+         * thread/flow 0 will listen on port x, and use thread_0's buf
+         * thread_1/flow_1 listen on x+1 -> thread_1->f_mbuf
+         * etc...
+         */
+        if (opts->tcpd_gpu_pci_addr) {
+                port += t->index;
+                reset_port(ai, port, cb);
+        }
+#endif
+
         int i, n, s;
 
         struct flow_create_args args = {
@@ -269,6 +287,17 @@ void socket_listen(struct thread *t)
         switch (ai->ai_socktype) {
         case SOCK_STREAM:
                 n = opts->num_ports ? opts->num_ports : 1;
+#ifdef WITH_TCPDIRECT
+                /* TCPDirect:
+                 * See TCPDirect comment above^
+                 *
+                 * We are co-opting the num_ports option, so each thread/flow
+                 * listens on a port that's 1 larger than the previous thread's
+                 * port.
+                 */
+                if (opts->tcpd_gpu_pci_addr)
+                        n = 1;
+#endif
                 for (i = 0; i < n; i++) {
                         s = socket_bind_listener(t, ai);
                         socket_init_not_established(t, s);

@@ -80,23 +80,32 @@ def build_neper_cmd(neper_dir: str, is_client: bool, dev: str,
                     nic_pci: str, gpu_pci: str,
                     control_port, source_port, port, length,
                     src_ip, dst_ip, queue_start, queue_num,
-                    tcpd_validate, tcpd_rx_cpy)->str:
+                    tcpd_validate, tcpd_rx_cpy)->tuple:
 
         # TODO tcp_stream_cuda2 -> tcp_stream eventually
-        cmd = (f"taskset --cpu-list {cpu_list} {neper_dir}/tcp_stream_cuda2 -T {threads} -F {flows} --tcpdirect-phys-len {phys_len}"
-                f" --port {port} --source-port {source_port} --control-port {control_port}"
-                f" --buffer-size {buffer_size} --tcpd-nic-pci-addr {nic_pci} --tcpd-gpu-pci-addr {gpu_pci} -l {length}")
+        cmd = (f"taskset --cpu-list {cpu_list} {neper_dir}/tcp_stream_cuda2"
+               f" -T {threads} -F {flows} --tcpdirect-phys-len {phys_len}"
+               f" --port {port} --source-port {source_port}"
+               f" --control-port {control_port}"
+               f" --buffer-size {buffer_size} --tcpd-nic-pci-addr {nic_pci}"
+               f" --tcpd-gpu-pci-addr {gpu_pci} -l {length}"
+               f" --num-ports {flows}")
 
-        env = {"CUDA_VISIBLE_DEVICES": link_to_gpu_index[dev]}
+        if tcpd_validate:
+                cmd += " --tcpd-validate"
+
         if is_client:
                 cmd += f" -c -H {dst_ip}"
         else:
-                cmd = cmd + (f" --tcpdirect-link-name {dev} --tcpdirect-src-ip {src_ip} --tcpdirect-dst-ip {dst_ip}"
-                             f" --queue-start {queue_start} --queue-num {queue_num}")
-                if tcpd_validate:
-                        cmd += " --tcpd-validate"
+                cmd = cmd + (f" --tcpdirect-link-name {dev}"
+                             f" --tcpdirect-src-ip {src_ip}"
+                             f" --tcpdirect-dst-ip {dst_ip}"
+                             f" --queue-start {queue_start}"
+                             f" --queue-num {queue_num}")
                 if tcpd_rx_cpy:
                         cmd += " --tcpd-rx-cpy"
+
+        env = {"CUDA_VISIBLE_DEVICES": link_to_gpu_index[dev]}
 
         return (cmd, env)
 
@@ -199,14 +208,18 @@ if __name__ == "__main__":
 
         cmds = []
         debug(f"running on {devices}")
+        is_client = args.client
+
         for i, dev in enumerate(devices):
                 nic_pci = link_to_nic_pci_addr[dev]
                 gpu_pci = link_to_gpu_pci_addr[dev]
 
+                # increment control port by 1, and src/dst ports by flow_count
+                # for each additional link we're running Neper on
                 ctrl_port = args.control_port + i
-                src_port = args.source_port + i * args.flows
-                dst_port = args.port + i
-                is_client = args.client
+                src_port = i * args.flows + args.source_port
+                dst_port = i * args.flows + args.port
+
                 src_ip, dst_ip = src_ips[i], hosts[i]
 
                 # TODO should CPU range be configurable by the user?
@@ -220,13 +233,18 @@ if __name__ == "__main__":
 
                 cmds.append(cmd_env)
 
-        debug(cmds)
+        for cmd in cmds:
+                debug(cmd)
+
         if not args.dry_run:
                 sp_list = run_cmds(cmds)
                 debug("parsing subprocesses outputs")
                 for dev, i in zip(devices, parse_subprocess_outputs(sp_list)):
                         if not args.client:
-                                print(f"[{dev}] Throughput (Mb/s): {i['throughput']}")
+                                try:
+                                        print(f"[{dev}] Throughput (Mb/s): {i['throughput']}")
+                                except KeyError:
+                                        print(f"[{dev}] Throughput (Mb/s): NA")
 
                 # TODO remove, flow-steering rules are installed via Neper now
                 # delete flow-steering rules

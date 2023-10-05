@@ -227,9 +227,9 @@ int tcpdirect_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct
   // }
 
   cudaMalloc(&gpu_tx_mem_, alloc_size);
-  if (is_client) {
-    fill_tx_buffer(gpu_tx_mem_, alloc_size);
-    cudaDeviceSynchronize();
+  if (is_client && opts->tcpd_validate) {
+          fill_tx_buffer(gpu_tx_mem_, alloc_size);
+          cudaDeviceSynchronize();
   }
   unsigned int flag = 1;
   cuPointerSetAttribute(&flag,
@@ -262,11 +262,13 @@ int tcpdirect_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct
 
     // copied from socket.c#socket_connect_one()
     int flow_idx = (t->flow_first + t->flow_count);
-    int source_port = flow_idx + opts->source_port;
+    int src_port = flow_idx + opts->source_port;
+    int dst_port = flow_idx + atoi(opts->port);
+
     char flow_steer_cmd[512];
     sprintf(flow_steer_cmd,
             "ethtool -N %s flow-type tcp4 src-ip %s dst-ip %s src-port %i dst-port %s queue %i",
-            opts->tcpdirect_link_name, opts->tcpdirect_src_ip, opts->tcpdirect_dst_ip, source_port, opts->port, num_queues);
+            opts->tcpdirect_link_name, opts->tcpdirect_src_ip, opts->tcpdirect_dst_ip, src_port, dst_port, num_queues);
     ret = system(flow_steer_cmd);
 
     // only running the below ethtool commands after last thread/flow is setup

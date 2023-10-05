@@ -110,8 +110,6 @@ void check_options_tcp_stream(struct options *opts, struct callbacks *cb)
             // CHECK((CUdeviceptr)gpu_tx_mem_ % PAGE_SIZE == 0);
 
             if (opts->client) {
-                  CHECK(cb, !opts->tcpd_validate,
-                        "Validation only allowed on hosts.");
                   CHECK(cb, !opts->tcpd_rx_cpy,
                         "Copying CUDA buffer to userspace only allowed on hosts.");
             } else {
@@ -120,6 +118,10 @@ void check_options_tcp_stream(struct options *opts, struct callbacks *cb)
                   CHECK(cb, opts->tcpdirect_dst_ip,
                         "Must provide destination IP address for TCPDirect host.");
             }
+            CHECK(cb, opts->num_flows == opts->num_threads,
+                  "Thread/Flow count must be equal when running in TCPDirect mode.");
+            CHECK(cb, opts->num_flows == opts->num_ports,
+                  "Number of ports should equal number of flows when running in TCPDirect mode.");
       }
 }
 
