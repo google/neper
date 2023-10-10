@@ -82,8 +82,7 @@ def build_neper_cmd(neper_dir: str, is_client: bool, dev: str,
                     src_ip, dst_ip, queue_start, queue_num,
                     tcpd_validate, tcpd_rx_cpy)->tuple:
 
-        # TODO tcp_stream_cuda2 -> tcp_stream eventually
-        cmd = (f"taskset --cpu-list {cpu_list} {neper_dir}/tcp_stream_cuda2"
+        cmd = (f"taskset --cpu-list {cpu_list} {neper_dir}/tcp_stream"
                f" -T {threads} -F {flows} --tcpdirect-phys-len {phys_len}"
                f" --port {port} --source-port {source_port}"
                f" --control-port {control_port}"

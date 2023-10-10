@@ -491,7 +491,6 @@ int tcpdirect_send(int socket, void *buf, size_t n, int flags) {
 
   tmbuf = (struct tcpdirect_cuda_mbuf *)buf;
   gpu_mem_fd_ = tmbuf->gpu_mem_fd_;
-  void *gpu_tx_mem_ = tmbuf->gpu_tx_mem_;
 
   memset(&msg, 0, sizeof(msg));
   // memset(cmsg, 0, sizeof(struct cmsghdr));
@@ -535,7 +534,7 @@ int tcpdirect_recv(int socket, void *f_mbuf, size_t n, int flags, struct thread 
   struct msghdr msg_local;
   struct msghdr *msg;
   struct tcpdirect_cuda_mbuf *tmbuf;
-  int buf, ret, client_fd;
+  int ret, client_fd; // buf
   int buffer_size = n;
   size_t total_received = 0;
   unsigned char *cpy_buffer;
@@ -567,7 +566,7 @@ int tcpdirect_recv(int socket, void *f_mbuf, size_t n, int flags, struct thread 
   msg->msg_control = offsetbuf;
   msg->msg_controllen = sizeof(offsetbuf);
 
-  char *buf_mem = NULL;
+  // char *buf_mem = NULL;
 
   if (msg->msg_flags & MSG_CTRUNC) {
     printf("fatal, cmsg truncated, current msg_controllen\n");
