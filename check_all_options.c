@@ -101,7 +101,7 @@ void check_options_tcp_rr(struct options *opts, struct callbacks *cb)
 
 void check_options_tcp_stream(struct options *opts, struct callbacks *cb)
 {
-#ifdef WITH_TCPDIRECT
+#ifdef WITH_TCPDEVMEM
       if (opts->tcpd_gpu_pci_addr) {
             CHECK(cb, opts->tcpd_nic_pci_addr,
                   "Must provide NIC PCI address if GPU PCI address was provided.");
@@ -124,7 +124,7 @@ void check_options_tcp_stream(struct options *opts, struct callbacks *cb)
             CHECK(cb, opts->num_flows == opts->num_ports,
                   "Number of ports should equal number of flows when running in TCPDirect mode.");
       }
-#endif /* WITH_TCPDIRECT */
+#endif /* WITH_TCPDEVMEM */
 }
 
 void check_options_udp_rr(struct options *opts, struct callbacks *cb)

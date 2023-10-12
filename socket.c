@@ -18,7 +18,7 @@
 #include "flow.h"
 #include "socket.h"
 #include "thread.h"
-#ifdef WITH_TCPDIRECT
+#ifdef WITH_TCPDEVMEM
 #include "tcpdirect.h"
 #endif
 
@@ -70,7 +70,7 @@ static void socket_init_not_established(struct thread *t, int s)
                 if (err)
                         PLOG_ERROR(t->cb, "setsockopt(SO_LINGER)");
         }
-#ifdef WITH_TCPDIRECT
+#ifdef WITH_TCPDEVMEM
         if (!t->f_mbuf && opts->tcpd_gpu_pci_addr) {
                 if (tcpdirect_cuda_setup_alloc(t->opts, &t->f_mbuf, t)) {
                         LOG_ERROR(t->cb, "%s: failed to setup tcpdirect CUDA socket",
@@ -80,7 +80,7 @@ static void socket_init_not_established(struct thread *t, int s)
         }
         if (opts->tcpd_nic_pci_addr)
                 tcpdirect_setup_socket(s);
-#endif
+#endif /* WITH_TCPDEVMEM */
 }
 
 /*
@@ -254,7 +254,7 @@ void socket_listen(struct thread *t)
         struct addrinfo *ai = getaddrinfo_or_die(opts->host, opts->port, &hints,
                                                  cb);
         int port = atoi(opts->port);
-#ifdef WITH_TCPDIRECT
+#ifdef WITH_TCPDEVMEM
         /* TCPDirect:
          * Since each thread has a CUDA buffer, and
          * flow-steering rules are required, threads, TCP connections, and
@@ -287,7 +287,7 @@ void socket_listen(struct thread *t)
         switch (ai->ai_socktype) {
         case SOCK_STREAM:
                 n = opts->num_ports ? opts->num_ports : 1;
-#ifdef WITH_TCPDIRECT
+#ifdef WITH_TCPDEVMEM
                 /* TCPDirect:
                  * See TCPDirect comment above^
                  *
@@ -297,7 +297,7 @@ void socket_listen(struct thread *t)
                  */
                 if (opts->tcpd_gpu_pci_addr)
                         n = 1;
-#endif
+#endif /* WITH_TCPDEVMEM */
                 for (i = 0; i < n; i++) {
                         s = socket_bind_listener(t, ai);
                         socket_init_not_established(t, s);

@@ -1,4 +1,4 @@
-#ifdef WITH_TCPDIRECT
+#ifdef WITH_TCPDEVMEM
 #include <cuda.h>
 #include <cuda_runtime.h>
 
@@ -782,4 +782,4 @@ int cuda_flow_cleanup(void *f_mbuf) {
   free(t_mbuf->scattered_data_);
   return 0;
 }
-#endif /* #ifdef WITH_TCPDIRECT */
+#endif /* #ifdef WITH_TCPDEVMEM */

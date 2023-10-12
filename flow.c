@@ -19,7 +19,7 @@
 #include "socket.h"
 #include "thread.h"
 #include "stats.h"
-#ifdef WITH_TCPDIRECT
+#ifdef WITH_TCPDEVMEM
 #include "tcpdirect.h"
 #endif
 
@@ -253,7 +253,7 @@ void flow_delete(struct flow *f)
                 thread_clear_flow_or_die(f->f_thread, f);
         }
 
-#ifdef WITH_TCPDIRECT
+#ifdef WITH_TCPDEVMEM
         if (flow_thread(f)->opts->tcpd_gpu_pci_addr) {
                 cuda_flow_cleanup(f->f_mbuf);
         } else if (flow_thread(f)->opts->tcpd_nic_pci_addr) {

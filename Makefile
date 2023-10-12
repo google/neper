@@ -18,10 +18,10 @@
 
 all: binaries
 
-CFLAGS := -std=c99 -Wall -O3 -g -D_GNU_SOURCE -DNO_LIBNUMA -DNDEBUG=1
+CFLAGS := -std=c99 -Wall -O3 -g -D_GNU_SOURCE -DNO_LIBNUMA
 
-ifdef WITH_TCPDIRECT
-	CFLAGS += -DWITH_TCPDIRECT
+ifdef WITH_TCPDEVMEM
+	CFLAGS += -DWITH_TCPDEVMEM
 endif
 
 lib := \
@@ -53,7 +53,7 @@ lib := \
 tcp_rr-objs := tcp_rr_main.o tcp_rr.o rr.o $(lib)
 
 tcp_stream-objs := tcp_stream_main.o tcp_stream.o stream.o $(lib)
-ifdef WITH_TCPDIRECT
+ifdef WITH_TCPDEVMEM
 	tcp_stream-objs += tcpdirect.o
 endif
 
@@ -72,13 +72,13 @@ psp_rr-objs := psp_rr_main.o psp_rr.o rr.o psp_lib.o $(lib)
 ext-libs := -lm -lrt -lpthread
 
 tcpdirect.o: tcpdirect.cu
-	nvcc -arch=sm_90 -O3 -g -D_GNU_SOURCE -DNO_LIBNUMA -DWITH_TCPDIRECT -c -o $@ $^
+	nvcc -arch=sm_90 -O3 -g -D_GNU_SOURCE -DNO_LIBNUMA -DWITH_TCPDEVMEM -c -o $@ $^
 
 tcp_rr: $(tcp_rr-objs)
 	$(CC) $(LDFLAGS) -o $@ $^ $(ext-libs)
 
 tcp_stream: $(tcp_stream-objs)
-ifdef WITH_TCPDIRECT
+ifdef WITH_TCPDEVMEM
 	g++ $(LDFLAGS) -o $@ $^ $(ext-libs) -lc -L/usr/local/cuda/lib64 -lcudart -lcuda
 else
 	$(CC) $(LDFLAGS) -o $@ $^ $(ext-libs)

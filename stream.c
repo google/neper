@@ -23,7 +23,7 @@
 #include "socket.h"
 #include "stats.h"
 #include "thread.h"
-#ifdef WITH_TCPDIRECT
+#ifdef WITH_TCPDEVMEM
 #include "tcpdirect.h"
 #endif
 
@@ -31,7 +31,7 @@ static void *stream_alloc(struct thread *t)
 {
         const struct options *opts = t->opts;
 
-#ifdef WITH_TCPDIRECT
+#ifdef WITH_TCPDEVMEM
         if (!t->f_mbuf && t->opts->tcpd_gpu_pci_addr) {
                 if (tcpdirect_cuda_setup_alloc(t->opts, &t->f_mbuf, t)) {
                         LOG_ERROR(t->cb, "%s: failed to setup tcpdirect CUDA socket",
@@ -106,7 +106,7 @@ void stream_handler(struct flow *f, uint32_t events)
         if (events & EPOLLIN)
                 do {
                         do {
-#ifdef WITH_TCPDIRECT
+#ifdef WITH_TCPDEVMEM
                                 if (t->opts->tcpd_nic_pci_addr)
                                         n = tcpdirect_recv(fd, mbuf,
                                                            opts->buffer_size,
@@ -131,7 +131,7 @@ void stream_handler(struct flow *f, uint32_t events)
 
         if (events & EPOLLOUT)
                 do {
-#ifdef WITH_TCPDIRECT
+#ifdef WITH_TCPDEVMEM
                         if (t->opts->tcpd_gpu_pci_addr) {
                                 n = tcpdirect_send(fd, mbuf, opts->buffer_size, opts->send_flags);
                         }else if (t->opts->tcpd_nic_pci_addr) {
