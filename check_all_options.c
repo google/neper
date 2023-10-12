@@ -108,7 +108,7 @@ void check_options_tcp_stream(struct options *opts, struct callbacks *cb)
             CHECK(cb, opts->tcpdirect_phys_len > 0,
                   "Must provide non-zero --tcpdirect-phys-len flag if GPU PCI address was provided.");
             // TODO check page-alignment
-            // CHECK((CUdeviceptr)gpu_tx_mem_ % PAGE_SIZE == 0);
+            // CHECK((CUdeviceptr)gpu_gen_mem_ % PAGE_SIZE == 0);
 
             if (opts->client) {
                   CHECK(cb, !opts->tcpd_rx_cpy,

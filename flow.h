@@ -40,7 +40,11 @@ struct tcpdirect_udma_mbuf {
 struct tcpdirect_cuda_mbuf {
         int gpu_mem_fd_;
         int dma_buf_fd_;
-        void *gpu_tx_mem_;
+        void *gpu_gen_mem_;
+        void *gpu_rx_mem_;
+        void *gpu_scatter_list_;
+        void *scattered_data_;
+        void *rx_blks_;
         void *cpy_buffer;
         size_t bytes_received;
         size_t bytes_sent;
