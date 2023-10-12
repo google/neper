@@ -43,36 +43,6 @@ def run_pre_neper_cmds(dev: str):
         for cmd in cmds:
                 subprocess.run(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
 
-# adds flow-steering rules, e.x.
-# ethtool -N eth1 flow-type tcp4 ...
-def install_flow_steer_rules(dev, threads: int, src_port, port, src_ip, dst_ip, q_start, q_num)->list:
-        subprocesses, rules = [], []
-
-        for i in range(threads):
-                queue = q_start + (i % q_num)
-                flow_steering_cmd = f"ethtool -N {dev} flow-type tcp4 src-ip {src_ip} dst-ip {dst_ip} src-port {src_port + i} dst-port {port} queue {queue}"
-                debug(flow_steering_cmd)
-                sp = subprocess.run(flow_steering_cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-                subprocesses.append(sp)
-
-                line = sp.stdout.strip()
-                # the expected output will be similar to:
-                # "Added rule with ID 19989"
-                if "Added rule with ID" in line:
-                        rule = line.split()[-1]
-                        debug(f"[{dev}] added rule {rule}: {src_ip} {dst_ip} {src_port + i} {port}")
-                        rules.append(rule)
-
-        return rules
-
-
-# deletes flow-steering rules, given a list of rules and a link name
-def del_flow_steer_rules(dev: str, rules: list):
-        for rule in rules:
-                del_cmd = f"ethtool -N {dev} delete {rule}"
-                debug(f"[{dev}] deleting rule {rule}")
-                subprocess.run(del_cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-
 # returns a 2-tuple of a Neper command and a dict of env vars
 def build_neper_cmd(neper_dir: str, is_client: bool, dev: str,
                     threads: int, flows: int,
@@ -83,7 +53,7 @@ def build_neper_cmd(neper_dir: str, is_client: bool, dev: str,
                     tcpd_validate, tcpd_rx_cpy)->tuple:
 
         cmd = (f"taskset --cpu-list {cpu_list} {neper_dir}/tcp_stream"
-               f" -T {threads} -F {flows} --tcpdirect-phys-len {phys_len}"
+               f" -T {threads} -F {flows} --tcpd-phys-len {phys_len}"
                f" --port {port} --source-port {source_port}"
                f" --control-port {control_port}"
                f" --buffer-size {buffer_size} --tcpd-nic-pci-addr {nic_pci}"
@@ -96,9 +66,9 @@ def build_neper_cmd(neper_dir: str, is_client: bool, dev: str,
         if is_client:
                 cmd += f" -c -H {dst_ip}"
         else:
-                cmd = cmd + (f" --tcpdirect-link-name {dev}"
-                             f" --tcpdirect-src-ip {src_ip}"
-                             f" --tcpdirect-dst-ip {dst_ip}"
+                cmd = cmd + (f" --tcpd-link-name {dev}"
+                             f" --tcpd-src-ip {src_ip}"
+                             f" --tcpd-dst-ip {dst_ip}"
                              f" --queue-start {queue_start}"
                              f" --queue-num {queue_num}")
                 if tcpd_rx_cpy:
@@ -194,17 +164,6 @@ if __name__ == "__main__":
                         if not args.dry_run:
                                 run_pre_neper_cmds(dev)
 
-                        # TODO flow-steering rules installed in Neper now
-                        # control_port = args.control_port + i
-                        # starting_port = i * args.threads + args.source_port
-                        # dev = devices[i]
-                        # src_ip, dst_ip = src_ips[i], hosts[i]
-
-                        # # TODO port_start q_start, q_num
-                        # dst_port = args.port + i
-                        # rules = install_flow_steer_rules(dev, args.threads, starting_port, dst_port, src_ip, dst_ip, args.q_start, args.q_num)
-                        # dev_to_rule[dev] = rules
-
         cmds = []
         debug(f"running on {devices}")
         is_client = args.client
@@ -244,10 +203,3 @@ if __name__ == "__main__":
                                         print(f"[{dev}] Throughput (Mb/s): {i['throughput']}")
                                 except KeyError:
                                         print(f"[{dev}] Throughput (Mb/s): NA")
-
-                # TODO remove, flow-steering rules are installed via Neper now
-                # delete flow-steering rules
-                # if not args.client:
-                #         info("deleting flow-steering rules")
-                #         for dev in dev_to_rule:
-                #                 del_flow_steer_rules(dev, dev_to_rule[dev])

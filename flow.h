@@ -26,32 +26,6 @@ struct flow;  /* note: struct is defined opaquely within flow.c */
 struct neper_stat;
 struct thread;
 
-struct tcpdirect_udma_mbuf {
-        struct msghdr msg;
-        int dmabuf_fd;
-        int pages_fd;
-
-        int devfd;
-        int memfd;
-        int buf;
-        int buf_pages;
-};
-
-struct tcpdirect_cuda_mbuf {
-        int gpu_mem_fd_;
-        int dma_buf_fd_;
-        void *gpu_gen_mem_;
-        void *gpu_rx_mem_;
-        void *gpu_scatter_list_;
-        void *scattered_data_;
-        void *rx_blks_;
-        void *cpy_buffer;
-        size_t bytes_received;
-        size_t bytes_sent;
-        void *tokens;
-        void *vectors;
-};
-
 typedef void (*flow_handler)(struct flow *, uint32_t);
 
 /* Simple accessors. */

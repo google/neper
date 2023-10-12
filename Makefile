@@ -54,7 +54,7 @@ tcp_rr-objs := tcp_rr_main.o tcp_rr.o rr.o $(lib)
 
 tcp_stream-objs := tcp_stream_main.o tcp_stream.o stream.o $(lib)
 ifdef WITH_TCPDEVMEM
-	tcp_stream-objs += tcpdirect.o
+	tcp_stream-objs += tcpdevmem.o
 endif
 
 tcp_crr-objs := tcp_crr_main.o tcp_crr.o rr.o $(lib)
@@ -71,7 +71,7 @@ psp_rr-objs := psp_rr_main.o psp_rr.o rr.o psp_lib.o $(lib)
 
 ext-libs := -lm -lrt -lpthread
 
-tcpdirect.o: tcpdirect.cu
+tcpdevmem.o: tcpdevmem.cu
 	nvcc -arch=sm_90 -O3 -g -D_GNU_SOURCE -DNO_LIBNUMA -DWITH_TCPDEVMEM -c -o $@ $^
 
 tcp_rr: $(tcp_rr-objs)

@@ -19,7 +19,7 @@
 #include "socket.h"
 #include "thread.h"
 #ifdef WITH_TCPDEVMEM
-#include "tcpdirect.h"
+#include "tcpdevmem.h"
 #endif
 
 #ifndef NO_LIBNUMA
@@ -72,14 +72,14 @@ static void socket_init_not_established(struct thread *t, int s)
         }
 #ifdef WITH_TCPDEVMEM
         if (!t->f_mbuf && opts->tcpd_gpu_pci_addr) {
-                if (tcpdirect_cuda_setup_alloc(t->opts, &t->f_mbuf, t)) {
-                        LOG_ERROR(t->cb, "%s: failed to setup tcpdirect CUDA socket",
+                if (tcpd_cuda_setup_alloc(t->opts, &t->f_mbuf, t)) {
+                        LOG_FATAL(t->cb, "%s: failed to setup devmem CUDA socket",
                                   __func__);
                         exit(1);
                 }
         }
         if (opts->tcpd_nic_pci_addr)
-                tcpdirect_setup_socket(s);
+                tcpd_setup_socket(s);
 #endif /* WITH_TCPDEVMEM */
 }
 
@@ -255,7 +255,7 @@ void socket_listen(struct thread *t)
                                                  cb);
         int port = atoi(opts->port);
 #ifdef WITH_TCPDEVMEM
-        /* TCPDirect:
+        /* TCP Devmem:
          * Since each thread has a CUDA buffer, and
          * flow-steering rules are required, threads, TCP connections, and
          * CUDA buffers need to be 1:1:1.
@@ -288,8 +288,8 @@ void socket_listen(struct thread *t)
         case SOCK_STREAM:
                 n = opts->num_ports ? opts->num_ports : 1;
 #ifdef WITH_TCPDEVMEM
-                /* TCPDirect:
-                 * See TCPDirect comment above^
+                /* TCP Devmem:
+                 * See TCP Devmem comment above^
                  *
                  * We are co-opting the num_ports option, so each thread/flow
                  * listens on a port that's 1 larger than the previous thread's

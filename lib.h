@@ -111,11 +111,10 @@ struct options {
         bool tcpd_rx_cpy;
         const char *tcpd_nic_pci_addr;
         const char *tcpd_gpu_pci_addr;
-        unsigned long long tcpdirect_phys_addr;
-        unsigned long long tcpdirect_phys_len;
-        const char *tcpdirect_src_ip;
-        const char *tcpdirect_dst_ip;
-        const char *tcpdirect_link_name;
+        unsigned long long tcpd_phys_len;
+        const char *tcpd_src_ip;
+        const char *tcpd_dst_ip;
+        const char *tcpd_link_name;
         int queue_start;
         int queue_num;
 #endif /* WITH_TCPDEVMEM */

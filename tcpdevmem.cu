@@ -20,7 +20,7 @@
 #include <string>
 #include <vector>
 
-#include "tcpdirect.h"
+#include "tcpdevmem.h"
 #include "logging.h"
 #include "flow.h"
 #include "thread.h"
@@ -100,7 +100,7 @@ struct devmemtoken {
   __u32 token_count;
 };
 
-struct TcpDirectRxBlock {
+struct TcpdRxBlock {
   uint64_t gpu_offset;
   size_t size;
   uint64_t paddr;
@@ -166,7 +166,7 @@ __global__ void scatter_copy_kernel(long3* scatter_list, uint8_t* dst,
   }
 }
 
-void GatherRxData(struct tcpdirect_cuda_mbuf *tmbuf) {
+void gather_rx_data(struct tcpdevmem_cuda_mbuf *tmbuf) {
   int ret;
   void *gpu_scatter_list_ = tmbuf->gpu_scatter_list_;
   std::vector<long3> *scattered_data_ = (std::vector<long3> *)tmbuf->scattered_data_;
@@ -184,13 +184,13 @@ void GatherRxData(struct tcpdirect_cuda_mbuf *tmbuf) {
       (long3*)gpu_scatter_list_, (uint8_t*)gpu_rx_mem_, (uint8_t*)rx_buff_);
 }
 
-int tcpdirect_setup_socket(int socket) {
+int tcpd_setup_socket(int socket) {
   const int one = 1;
   if (setsockopt(socket, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one))
       || setsockopt(socket, SOL_SOCKET, SO_REUSEPORT, &one, sizeof(one))
       || setsockopt(socket, SOL_SOCKET, SO_ZEROCOPY, &one, sizeof(one))
      ) {
-    perror("tcpdirect_setup_socket");
+    perror("tcpd_setup_socket");
     exit(EXIT_FAILURE);
   }
 
@@ -242,7 +242,7 @@ err_close_dmabuf:
   return err;
 }
 
-int tcpdirect_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct thread *t)
+int tcpd_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct thread *t)
 {
   bool is_client = opts->client;
   int ret;
@@ -251,13 +251,13 @@ int tcpdirect_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct
   int dma_buf_fd_;
   int q_start = opts->queue_start;
   int q_num = opts->queue_num;
-  struct tcpdirect_cuda_mbuf *tmbuf;
-  const char *gpu_pci_addr = opts->tcpd_gpu_pci_addr;  // "0000:04:00.0"
-  const char *nic_pci_addr = opts->tcpd_nic_pci_addr;  // "0000:06:00.0"
-  size_t alloc_size = opts->tcpdirect_phys_len;
+  struct tcpdevmem_cuda_mbuf *tmbuf;
+  const char *gpu_pci_addr = opts->tcpd_gpu_pci_addr;
+  const char *nic_pci_addr = opts->tcpd_nic_pci_addr;
+  size_t alloc_size = opts->tcpd_phys_len;
 
   tmbuf =
-    (struct tcpdirect_cuda_mbuf *)calloc(1, sizeof(struct tcpdirect_cuda_mbuf));
+    (struct tcpdevmem_cuda_mbuf *)calloc(1, sizeof(struct tcpdevmem_cuda_mbuf));
   if (!tmbuf) {
     exit(EXIT_FAILURE);
   }
@@ -265,13 +265,6 @@ int tcpdirect_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct
   if (alloc_size % GPUMEM_ALIGNMENT != 0) {
     alloc_size += GPUMEM_ALIGNMENT - (alloc_size % GPUMEM_ALIGNMENT);
   }
-
-  // unnecessary if CUDA_VISIBLE_DEVICES env var is set
-  // ret = cudaSetDevice(opts->tcpdirect_gpu_idx);
-  // if (ret != 0) {
-  //   printf("cudaSetDevice failed: index %i", opts->tcpdirect_gpu_idx);
-  //   exit(70);
-  // }
 
   cudaMalloc(&gpu_gen_mem_, alloc_size);
   if (is_client && opts->tcpd_validate) {
@@ -297,7 +290,7 @@ int tcpdirect_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct
     printf("Bind to queue %i\n", num_queues);
     struct dma_buf_pages_bind_rx_queue bind_cmd;
 
-    strcpy(bind_cmd.ifname, opts->tcpdirect_link_name);
+    strcpy(bind_cmd.ifname, opts->tcpd_link_name);
     bind_cmd.rxq_idx = num_queues;
 
     ret = ioctl(gpu_mem_fd_, DMA_BUF_PAGES_BIND_RX, &bind_cmd);
@@ -315,17 +308,17 @@ int tcpdirect_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct
     char flow_steer_cmd[512];
     sprintf(flow_steer_cmd,
             "ethtool -N %s flow-type tcp4 src-ip %s dst-ip %s src-port %i dst-port %i queue %i",
-            opts->tcpdirect_link_name, opts->tcpdirect_src_ip, opts->tcpdirect_dst_ip, src_port, dst_port, num_queues);
+            opts->tcpd_link_name, opts->tcpd_src_ip, opts->tcpd_dst_ip, src_port, dst_port, num_queues);
     ret = system(flow_steer_cmd);
 
     // only running the below ethtool commands after last thread/flow is setup
     if (flow_idx + t->flow_limit >= opts->num_flows) {
       char ethtool_cmd[512];
-      sprintf(ethtool_cmd, "ethtool --set-priv-flags %s enable-strict-header-split on", opts->tcpdirect_link_name);
+      sprintf(ethtool_cmd, "ethtool --set-priv-flags %s enable-strict-header-split on", opts->tcpd_link_name);
       ret = ret | system(ethtool_cmd);
-      sprintf(ethtool_cmd, "ethtool --set-priv-flags %s enable-header-split on", opts->tcpdirect_link_name);
+      sprintf(ethtool_cmd, "ethtool --set-priv-flags %s enable-header-split on", opts->tcpd_link_name);
       ret = ret | system(ethtool_cmd);
-      sprintf(ethtool_cmd, "ethtool --set-rxfh-indir %s equal 8", opts->tcpdirect_link_name);
+      sprintf(ethtool_cmd, "ethtool --set-rxfh-indir %s equal 8", opts->tcpd_link_name);
       ret = ret | system(ethtool_cmd);
       printf("ethtool cmds returned %i, sleeping 1...\n", ret);
       sleep(1);
@@ -344,7 +337,7 @@ int tcpdirect_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct
 
   cudaMalloc(&tmbuf->gpu_rx_mem_, opts->buffer_size);
   cudaMalloc(&tmbuf->gpu_scatter_list_, opts->buffer_size);
-  tmbuf->rx_blks_ = new std::vector<TcpDirectRxBlock>();
+  tmbuf->rx_blks_ = new std::vector<TcpdRxBlock>();
   tmbuf->scattered_data_ = new std::vector<long3>();
   return 0;
 }
@@ -356,9 +349,9 @@ int udmabuf_setup_alloc(const struct options *opts, void **f_mbuf) {
   int buf;
   int buf_pages;
   int ret;
-  size_t size = opts->tcpdirect_phys_len;
+  size_t size = opts->tcpd_phys_len;
 
-  struct tcpdirect_udma_mbuf *tmbuf;
+  struct tcpdevmem_udma_mbuf *tmbuf;
   struct dma_buf_create_pages_info pages_create_info;
   struct udmabuf_create create;
 
@@ -366,7 +359,7 @@ int udmabuf_setup_alloc(const struct options *opts, void **f_mbuf) {
 
   if (*f_mbuf) return 0;
 
-  tmbuf = (struct tcpdirect_udma_mbuf *)calloc(1, sizeof(struct tcpdirect_udma_mbuf));
+  tmbuf = (struct tcpdevmem_udma_mbuf *)calloc(1, sizeof(struct tcpdevmem_udma_mbuf));
   if (!tmbuf) {
     exit(EXIT_FAILURE);
   }
@@ -411,8 +404,6 @@ int udmabuf_setup_alloc(const struct options *opts, void **f_mbuf) {
   pages_create_info.dma_buf_fd = buf;
   pages_create_info.create_page_pool = is_client ? 0 : 1;
 
-  /* TODO: hardcoded NIC pci address */
-  // "0000:06:00.0"
   ret = sscanf(opts->tcpd_nic_pci_addr, "0000:%llx:%llx.%llx",
          &pages_create_info.pci_bdf[0],
          &pages_create_info.pci_bdf[1],
@@ -464,18 +455,18 @@ int udmabuf_setup_alloc(const struct options *opts, void **f_mbuf) {
   return 0;
 }
 
-int tcpdirect_udma_send(int socket, void *f_mbuf, size_t n, int flags) {
+int tcpd_udma_send(int socket, void *f_mbuf, size_t n, int flags) {
   int buf_pages, buf;
   struct iovec iov;
   struct msghdr *msg;
   struct cmsghdr *cmsg;
   char buf_dummy[n];
   char offsetbuf[CMSG_SPACE(sizeof(uint32_t) * 2)];
-  struct tcpdirect_udma_mbuf *tmbuf;
+  struct tcpdevmem_udma_mbuf *tmbuf;
 
   if (!f_mbuf) return -1;
 
-  tmbuf = (struct tcpdirect_udma_mbuf *)f_mbuf;
+  tmbuf = (struct tcpdevmem_udma_mbuf *)f_mbuf;
   buf_pages = tmbuf->buf_pages;
   buf = tmbuf->buf;
   msg = &tmbuf->msg;
@@ -531,17 +522,17 @@ int tcpdirect_udma_send(int socket, void *f_mbuf, size_t n, int flags) {
   return bytes_sent;
 }
 
-int tcpdirect_send(int socket, void *buf, size_t n, int flags) {
+int tcpd_send(int socket, void *buf, size_t n, int flags) {
   int gpu_mem_fd_;
   struct iovec iov;
   struct msghdr msg;
   struct cmsghdr *cmsg;
   char offsetbuf[CMSG_SPACE(sizeof(uint32_t) * 2)];
-  struct tcpdirect_cuda_mbuf *tmbuf;
+  struct tcpdevmem_cuda_mbuf *tmbuf;
 
   if (!buf) return -1;
 
-  tmbuf = (struct tcpdirect_cuda_mbuf *)buf;
+  tmbuf = (struct tcpdevmem_cuda_mbuf *)buf;
   gpu_mem_fd_ = tmbuf->gpu_mem_fd_;
 
   memset(&msg, 0, sizeof(msg));
@@ -581,34 +572,33 @@ int tcpdirect_send(int socket, void *buf, size_t n, int flags) {
   return bytes_sent;
 }
 
-int tcpdirect_recv(int socket, void *f_mbuf, size_t n, int flags, struct thread *t) {
+int tcpd_recv(int socket, void *f_mbuf, size_t n, int flags, struct thread *t) {
   struct iovec iov;
   struct msghdr msg_local;
   struct msghdr *msg;
-  struct tcpdirect_cuda_mbuf *tmbuf;
-  int ret, client_fd; // buf
+  struct tcpdevmem_cuda_mbuf *tmbuf;
+  int ret, client_fd;
   int buffer_size = n;
   size_t total_received = 0;
   unsigned char *cpy_buffer;
   const struct options *opts = t->opts;
   std::vector<devmemvec> *vectors;
   std::vector<devmemtoken> *tokens;
-  std::vector<TcpDirectRxBlock> *rx_blks_;
+  std::vector<TcpdRxBlock> *rx_blks_;
   std::vector<long3> *scattered_data_;
 
   if (!f_mbuf) return -1;
 
-  tmbuf = (struct tcpdirect_cuda_mbuf *)f_mbuf;
+  tmbuf = (struct tcpdevmem_cuda_mbuf *)f_mbuf;
   cpy_buffer = (unsigned char *)tmbuf->cpy_buffer;
   vectors = (std::vector<devmemvec> *)tmbuf->vectors;
   tokens = (std::vector<devmemtoken> *)tmbuf->tokens;
-  rx_blks_ = (std::vector<TcpDirectRxBlock> *)tmbuf->rx_blks_;
+  rx_blks_ = (std::vector<TcpdRxBlock> *)tmbuf->rx_blks_;
   scattered_data_ = (std::vector<long3> *)tmbuf->scattered_data_;
 
   client_fd = socket;
 
   char buf_dummy[n];
-  // char offsetbuf[CMSG_SPACE(sizeof(uint32_t) * 128)];
   char offsetbuf[CMSG_SPACE(sizeof(int) * 1000)];
   msg = &msg_local;
 
@@ -659,42 +649,21 @@ int tcpdirect_recv(int socket, void *f_mbuf, size_t n, int flags, struct thread 
     }
 
     struct devmemtoken token = { devmemvec->frag_token, 1 };
-    struct TcpDirectRxBlock blk;
+    struct TcpdRxBlock blk;
 
     blk.gpu_offset = (uint64_t)devmemvec->frag_offset;
     blk.size = devmemvec->frag_size;
     rx_blks_->emplace_back(blk);
 
-    // struct dma_buf_sync sync = { 0 };
-    // sync.flags = DMA_BUF_SYNC_READ | DMA_BUF_SYNC_START;
-    // ioctl(buf, DMA_BUF_IOCTL_SYNC, &sync);
-
-    // buf_mem = (char *)mmap(NULL, n, PROT_READ | PROT_WRITE,
-    //                MAP_SHARED, buf, 0);
-    // if (buf_mem == MAP_FAILED) {
-    //   perror("mmap()");
-    //   exit(1);
-    // }
     total_received += devmemvec->frag_size;
-    // printf("\n\nreceived frag_page=%u, in_page_offset=%u,"
-    //         " frag_offset=%u, frag_size=%u, token=%u"
-    //         " total_received=%lu\n",
-    //         devmemvec->frag_offset >> PAGE_SHIFT,
-    //         devmemvec->frag_offset % PAGE_SIZE,
-    //         devmemvec->frag_offset, devmemvec->frag_size,
-    //         devmemvec->frag_token,
-    //         total_received);
 
-    // sync.flags = DMA_BUF_SYNC_READ | DMA_BUF_SYNC_END;
-    // ioctl(buf, DMA_BUF_IOCTL_SYNC, &sync);
     vectors->emplace_back(*devmemvec);
     tokens->push_back(token);
-    // munmap(buf_mem, n);
   }
 
   size_t dst_offset = tmbuf->bytes_received;
   for (int i = 0; i < rx_blks_->size(); i++) {
-    struct TcpDirectRxBlock blk = rx_blks_->at(i);
+    struct TcpdRxBlock blk = rx_blks_->at(i);
     size_t off = (size_t)blk.gpu_offset;
     scattered_data_->emplace_back(
         make_long3((long)dst_offset, (long)off, (long)blk.size));
@@ -709,7 +678,7 @@ int tcpdirect_recv(int socket, void *f_mbuf, size_t n, int flags, struct thread 
   */
   if (tmbuf->bytes_received == buffer_size) {
     if (opts->tcpd_rx_cpy) {
-      GatherRxData(tmbuf);
+      gather_rx_data(tmbuf);
       cudaDeviceSynchronize();
     }
     /* There is a performance impact when we cudaMemcpy from the CUDA buffer to
@@ -768,7 +737,7 @@ int tcpdirect_recv(int socket, void *f_mbuf, size_t n, int flags, struct thread 
 }
 
 int cuda_flow_cleanup(void *f_mbuf) {
-  struct tcpdirect_cuda_mbuf *t_mbuf = (struct tcpdirect_cuda_mbuf *)f_mbuf;
+  struct tcpdevmem_cuda_mbuf *t_mbuf = (struct tcpdevmem_cuda_mbuf *)f_mbuf;
   close(t_mbuf->gpu_mem_fd_);
   close(t_mbuf->dma_buf_fd_);
   cudaFree(t_mbuf->gpu_gen_mem_);

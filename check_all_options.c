@@ -105,24 +105,22 @@ void check_options_tcp_stream(struct options *opts, struct callbacks *cb)
       if (opts->tcpd_gpu_pci_addr) {
             CHECK(cb, opts->tcpd_nic_pci_addr,
                   "Must provide NIC PCI address if GPU PCI address was provided.");
-            CHECK(cb, opts->tcpdirect_phys_len > 0,
-                  "Must provide non-zero --tcpdirect-phys-len flag if GPU PCI address was provided.");
-            // TODO check page-alignment
-            // CHECK((CUdeviceptr)gpu_gen_mem_ % PAGE_SIZE == 0);
+            CHECK(cb, opts->tcpd_phys_len > 0,
+                  "Must provide non-zero --tcpd-phys-len flag if GPU PCI address was provided.");
 
             if (opts->client) {
                   CHECK(cb, !opts->tcpd_rx_cpy,
                         "Copying CUDA buffer to userspace only allowed on hosts.");
             } else {
-                  CHECK(cb, opts->tcpdirect_src_ip,
-                        "Must provide source IP address for TCPDirect host.");
-                  CHECK(cb, opts->tcpdirect_dst_ip,
-                        "Must provide destination IP address for TCPDirect host.");
+                  CHECK(cb, opts->tcpd_src_ip,
+                        "Must provide source IP address for devmem TCP host.");
+                  CHECK(cb, opts->tcpd_dst_ip,
+                        "Must provide destination IP address for devmem TCP host.");
             }
             CHECK(cb, opts->num_flows == opts->num_threads,
-                  "Thread/Flow count must be equal when running in TCPDirect mode.");
+                  "Thread/Flow count must be equal when running in devmem TCP mode.");
             CHECK(cb, opts->num_flows == opts->num_ports,
-                  "Number of ports should equal number of flows when running in TCPDirect mode.");
+                  "Number of ports should equal number of flows when running in devmem TCP mode.");
       }
 #endif /* WITH_TCPDEVMEM */
 }

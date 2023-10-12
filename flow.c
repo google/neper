@@ -20,7 +20,7 @@
 #include "thread.h"
 #include "stats.h"
 #ifdef WITH_TCPDEVMEM
-#include "tcpdirect.h"
+#include "tcpdevmem.h"
 #endif
 
 /*
@@ -257,7 +257,7 @@ void flow_delete(struct flow *f)
         if (flow_thread(f)->opts->tcpd_gpu_pci_addr) {
                 cuda_flow_cleanup(f->f_mbuf);
         } else if (flow_thread(f)->opts->tcpd_nic_pci_addr) {
-                struct tcpdirect_udma_mbuf *t_mbuf = (struct tcpdirect_udma_mbuf *)f->f_mbuf;
+                struct tcpdevmem_udma_mbuf *t_mbuf = (struct tcpdevmem_udma_mbuf *)f->f_mbuf;
 
                 close(t_mbuf->buf_pages);
                 close(t_mbuf->buf);
