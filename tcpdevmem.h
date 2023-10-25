@@ -19,17 +19,6 @@
 #define DMA_BUF_CREATE_PAGES \
 	_IOW(DMA_BUF_BASE, 2, struct dma_buf_create_pages_info)
 
-/* GRTE libraries from google3 already define the following */
-#ifndef F_SEAL_SHRINK
-#define F_SEAL_SHRINK 2U
-#endif
-#ifndef F_ADD_SEALS
-#define F_ADD_SEALS 1033U
-#endif
-#ifndef F_GET_SEALS
-#define F_GET_SEALS 1034U
-#endif
-
 struct dma_buf_create_pages_info
 {
 	__u64 pci_bdf[3];

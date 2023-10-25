@@ -204,47 +204,8 @@ int tcpd_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct thre
     exit(71);
   }
 
-  if (!is_client) {
-    install_flow_steering(opts, (int)gpu_mem_fd_, t);
-
-    // int num_queues = q_start + (t->index % q_num);
-    // printf("Bind to queue %i\n", num_queues);
-    // struct dma_buf_pages_bind_rx_queue bind_cmd;
-
-    // strcpy(bind_cmd.ifname, opts->tcpd_link_name);
-    // bind_cmd.rxq_idx = num_queues;
-
-    // ret = ioctl(gpu_mem_fd_, DMA_BUF_PAGES_BIND_RX, &bind_cmd);
-    // if (ret < 0) {
-    //   printf("%s: [FAIL, bind fail queue=%d]\n", TEST_PREFIX,
-    //         num_queues);
-    //   exit(78);
-    // }
-
-    // // copied from socket.c#socket_connect_one()
-    // int flow_idx = (t->flow_first + t->flow_count);
-    // int src_port = flow_idx + opts->source_port;
-    // int dst_port = flow_idx + atoi(opts->port);
-
-    // char flow_steer_cmd[512];
-    // sprintf(flow_steer_cmd,
-    //         "ethtool -N %s flow-type tcp4 src-ip %s dst-ip %s src-port %i dst-port %i queue %i",
-    //         opts->tcpd_link_name, opts->tcpd_src_ip, opts->tcpd_dst_ip, src_port, dst_port, num_queues);
-    // ret = system(flow_steer_cmd);
-
-    // // only running the below ethtool commands after last thread/flow is setup
-    // if (flow_idx + t->flow_limit >= opts->num_flows) {
-    //   char ethtool_cmd[512];
-    //   sprintf(ethtool_cmd, "ethtool --set-priv-flags %s enable-strict-header-split on", opts->tcpd_link_name);
-    //   ret = ret | system(ethtool_cmd);
-    //   sprintf(ethtool_cmd, "ethtool --set-priv-flags %s enable-header-split on", opts->tcpd_link_name);
-    //   ret = ret | system(ethtool_cmd);
-    //   sprintf(ethtool_cmd, "ethtool --set-rxfh-indir %s equal 8", opts->tcpd_link_name);
-    //   ret = ret | system(ethtool_cmd);
-    //   printf("ethtool cmds returned %i, sleeping 1...\n", ret);
-    //   sleep(1);
-    // }
-  }
+  if (!is_client)
+    install_flow_steering(opts, gpu_mem_fd_, t);
 
   *f_mbuf = tmbuf;
   tmbuf->gpu_mem_fd_ = gpu_mem_fd_;
