@@ -221,22 +221,20 @@ int udma_recv(int socket, void *f_mbuf, size_t n, struct thread *t)
         msg.msg_control = ctrl_data;
         msg.msg_controllen = sizeof(ctrl_data);
         ssize_t ret = recvmsg(socket, &msg, MSG_SOCK_DEVMEM);
-        printf("recvmsg ret=%lu\n", ret);
         if (ret < 0 && (errno == EAGAIN || errno == EWOULDBLOCK))
         {
                 return -1;
         }
         if (ret < 0)
         {
-                perror("recvmsg:");
+                PLOG_FATAL(t->cb, "recvmsg:");
                 exit(1);
         }
         if (ret == 0)
         {
-                printf("client exited\n");
+                LOG_ERROR(t->cb, "client exited");
                 return -1;
         }
-        printf("msg_flags=%d\n", msg.msg_flags);
 
         struct cmsghdr *cm = NULL;
         struct devmemvec *devmemvec = NULL;
@@ -246,7 +244,7 @@ int udma_recv(int socket, void *f_mbuf, size_t n, struct thread *t)
                     (cm->cmsg_type != SCM_DEVMEM_OFFSET &&
                      cm->cmsg_type != SCM_DEVMEM_HEADER))
                 {
-                        fprintf(stderr, "found weird cmsg\n");
+                        LOG_ERROR(t->cb, "found weird cmsg");
                         continue;
                 }
                 is_devmem = true;
@@ -257,12 +255,10 @@ int udma_recv(int socket, void *f_mbuf, size_t n, struct thread *t)
                 {
                         // TODO: process data copied from skb's linear
                         // buffer.
-                        fprintf(stderr,
-                                "SCM_DEVMEM_HEADER. "
-                                "devmemvec->frag_size=%u\n",
-                                devmemvec->frag_size);
+                        LOG_FATAL(t->cb,
+                                  "SCM_DEVMEM_HEADER. devmemvec->frag_size=%u",
+                                  devmemvec->frag_size);
                         exit(1);
-
                         continue;
                 }
 
@@ -287,7 +283,7 @@ int udma_recv(int socket, void *f_mbuf, size_t n, struct thread *t)
                                  sizeof(token));
                 if (ret)
                 {
-                        perror("DONTNEED failed");
+                        PLOG_FATAL(t->cb, "DONTNEED failed");
                         exit(1);
                 }
         }
@@ -298,8 +294,10 @@ int udma_recv(int socket, void *f_mbuf, size_t n, struct thread *t)
                 is_devmem = false;
                 total_received += ret;
         }
-        printf("total_received=%lu flow_steering_flakes=%lu\n",
-               total_received, flow_steering_flakes);
+        if (flow_steering_flakes) {
+                LOG_WARN(t->cb, "total_received=%lu flow_steering_flakes=%lu",
+                         total_received, flow_steering_flakes);
+        }
 
         return total_received;
 }
