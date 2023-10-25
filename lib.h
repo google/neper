@@ -106,7 +106,7 @@ struct options {
         bool async_connect;
 
         /* tcp_stream */
-#ifdef WITH_TCPDEVMEM
+#if defined(WITH_TCPDEVMEM_CUDA) || defined(WITH_TCPDEVMEM_UDMA)
         bool tcpd_validate;
         bool tcpd_rx_cpy;
         const char *tcpd_nic_pci_addr;
@@ -117,7 +117,7 @@ struct options {
         const char *tcpd_link_name;
         int queue_start;
         int queue_num;
-#endif /* WITH_TCPDEVMEM */
+#endif /* WITH_TCPDEVMEM_CUDA || WITH_TCPDEVMEM_UDMA */
         bool enable_read;
         bool enable_write;
         bool enable_tcp_maerts;

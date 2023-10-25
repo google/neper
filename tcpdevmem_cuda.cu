@@ -1,4 +1,3 @@
-#ifdef WITH_TCPDEVMEM
 #include <cuda.h>
 #include <cuda_runtime.h>
 
@@ -20,13 +19,19 @@
 #include <string>
 #include <vector>
 
+#if __cplusplus
+extern "C" {
+#endif
+
+#include "common.h"
+#include "tcpdevmem_cuda.h"
 #include "tcpdevmem.h"
 #include "logging.h"
 #include "flow.h"
 #include "thread.h"
 
-#ifndef MSG_ZEROCOPY
-#define MSG_ZEROCOPY	0x4000000
+#if __cplusplus
+}
 #endif
 
 #define LAST_PRIME 111
@@ -34,90 +39,17 @@
 #define MIN_RX_BUFFER_TOTAL_SIZE (1 << 28)
 #define GPUMEM_ALIGNMENT (1UL << 21)
 #define GPUMEM_MINSZ 0x400000
-#define PAGE_SHIFT (12)
-#define PAGE_SIZE (1 << PAGE_SHIFT)
 
 #define multiplier (1 << 16)
 
 #define TEST_PREFIX "ncdevmem"
 #define NUM_PAGES 16000
 
-/* missing definitions in mman-linux.h */
-#ifndef MFD_ALLOW_SEALING
-#define MFD_ALLOW_SEALING 2U
-#endif
-
-/* GRTE libraries from google3 already define the following */
-#ifndef F_SEAL_SHRINK
-#define F_SEAL_SHRINK 2U
-#endif
-#ifndef F_ADD_SEALS
-#define F_ADD_SEALS 1033U
-#endif
-#ifndef F_GET_SEALS
-#define F_GET_SEALS 1034U
-#endif
-
-#define MSG_SOCK_DEVMEM 0x2000000
-#define SO_DEVMEM_DONTNEED 97
-#define SO_DEVMEM_HEADER 98
-#define SCM_DEVMEM_HEADER SO_DEVMEM_HEADER
-#define SO_DEVMEM_OFFSET 99
-#define SCM_DEVMEM_OFFSET SO_DEVMEM_OFFSET
-
-struct dma_buf_create_pages_info {
-  __u64 pci_bdf[3];
-  __s32 dma_buf_fd;
-  __s32 create_page_pool;
-};
-
-struct dma_buf_pages_bind_rx_queue {
-  char ifname[IFNAMSIZ];
-  __u32 rxq_idx;
-};
-
-#define DMA_BUF_CREATE_PAGES \
-  _IOW(DMA_BUF_BASE, 2, struct dma_buf_create_pages_info)
-
-#define DMA_BUF_PAGES_BIND_RX \
-  _IOW(DMA_BUF_BASE, 3, struct dma_buf_pages_bind_rx_queue)
-
-// devmemvec represents a fragment of payload that is received on the socket.
-struct devmemvec {
-  // frag_offset is the offset in the registered memory.
-  __u32 frag_offset;
-  // frag size is the size of the payload.
-  __u32 frag_size;
-  // frag_token is an identifier for this fragment and it can be used to return
-  // the memory back to kernel.
-  __u32 frag_token;
-};
-
-// devmemtoken represents a range of tokens. It is used to return the fragment
-// memory back to the kernel.
-struct devmemtoken {
-  __u32 token_start;
-  __u32 token_count;
-};
-
 struct TcpdRxBlock {
   uint64_t gpu_offset;
   size_t size;
   uint64_t paddr;
 };
-
-struct udmabuf_create {
-  uint32_t memfd;
-  uint32_t flags;
-  uint64_t offset;
-  uint64_t size;
-};
-#define UDMABUF_CREATE _IOW('u', 0x42, struct udmabuf_create)
-
-int memfd_create(const char *name, unsigned int flags)
-{
-	return syscall(__NR_memfd_create, name, flags);
-}
 
 /* Fills buf of size n with a repeating sequence of 1 to 111 inclusive
  */
@@ -184,19 +116,6 @@ void gather_rx_data(struct tcpdevmem_cuda_mbuf *tmbuf) {
       (long3*)gpu_scatter_list_, (uint8_t*)gpu_rx_mem_, (uint8_t*)rx_buff_);
 }
 
-int tcpd_setup_socket(int socket) {
-  const int one = 1;
-  if (setsockopt(socket, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one))
-      || setsockopt(socket, SOL_SOCKET, SO_REUSEPORT, &one, sizeof(one))
-      || setsockopt(socket, SOL_SOCKET, SO_ZEROCOPY, &one, sizeof(one))
-     ) {
-    perror("tcpd_setup_socket");
-    exit(EXIT_FAILURE);
-  }
-
-  return 0;
-}
-
 int get_gpumem_dmabuf_pages_fd(const std::string& gpu_pci_addr,
                                const std::string& nic_pci_addr, void* gpu_mem,
                                size_t gpu_mem_sz, int* dma_buf_fd, bool is_client) {
@@ -249,8 +168,8 @@ int tcpd_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct thre
   void *gpu_gen_mem_;
   int gpu_mem_fd_;
   int dma_buf_fd_;
-  int q_start = opts->queue_start;
-  int q_num = opts->queue_num;
+  // int q_start = opts->queue_start;
+  // int q_num = opts->queue_num;
   struct tcpdevmem_cuda_mbuf *tmbuf;
   const char *gpu_pci_addr = opts->tcpd_gpu_pci_addr;
   const char *nic_pci_addr = opts->tcpd_nic_pci_addr;
@@ -286,43 +205,45 @@ int tcpd_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct thre
   }
 
   if (!is_client) {
-    int num_queues = q_start + (t->index % q_num);
-    printf("Bind to queue %i\n", num_queues);
-    struct dma_buf_pages_bind_rx_queue bind_cmd;
+    install_flow_steering(opts, (int)gpu_mem_fd_, t);
 
-    strcpy(bind_cmd.ifname, opts->tcpd_link_name);
-    bind_cmd.rxq_idx = num_queues;
+    // int num_queues = q_start + (t->index % q_num);
+    // printf("Bind to queue %i\n", num_queues);
+    // struct dma_buf_pages_bind_rx_queue bind_cmd;
 
-    ret = ioctl(gpu_mem_fd_, DMA_BUF_PAGES_BIND_RX, &bind_cmd);
-    if (ret < 0) {
-      printf("%s: [FAIL, bind fail queue=%d]\n", TEST_PREFIX,
-            num_queues);
-      exit(78);
-    }
+    // strcpy(bind_cmd.ifname, opts->tcpd_link_name);
+    // bind_cmd.rxq_idx = num_queues;
 
-    // copied from socket.c#socket_connect_one()
-    int flow_idx = (t->flow_first + t->flow_count);
-    int src_port = flow_idx + opts->source_port;
-    int dst_port = flow_idx + atoi(opts->port);
+    // ret = ioctl(gpu_mem_fd_, DMA_BUF_PAGES_BIND_RX, &bind_cmd);
+    // if (ret < 0) {
+    //   printf("%s: [FAIL, bind fail queue=%d]\n", TEST_PREFIX,
+    //         num_queues);
+    //   exit(78);
+    // }
 
-    char flow_steer_cmd[512];
-    sprintf(flow_steer_cmd,
-            "ethtool -N %s flow-type tcp4 src-ip %s dst-ip %s src-port %i dst-port %i queue %i",
-            opts->tcpd_link_name, opts->tcpd_src_ip, opts->tcpd_dst_ip, src_port, dst_port, num_queues);
-    ret = system(flow_steer_cmd);
+    // // copied from socket.c#socket_connect_one()
+    // int flow_idx = (t->flow_first + t->flow_count);
+    // int src_port = flow_idx + opts->source_port;
+    // int dst_port = flow_idx + atoi(opts->port);
 
-    // only running the below ethtool commands after last thread/flow is setup
-    if (flow_idx + t->flow_limit >= opts->num_flows) {
-      char ethtool_cmd[512];
-      sprintf(ethtool_cmd, "ethtool --set-priv-flags %s enable-strict-header-split on", opts->tcpd_link_name);
-      ret = ret | system(ethtool_cmd);
-      sprintf(ethtool_cmd, "ethtool --set-priv-flags %s enable-header-split on", opts->tcpd_link_name);
-      ret = ret | system(ethtool_cmd);
-      sprintf(ethtool_cmd, "ethtool --set-rxfh-indir %s equal 8", opts->tcpd_link_name);
-      ret = ret | system(ethtool_cmd);
-      printf("ethtool cmds returned %i, sleeping 1...\n", ret);
-      sleep(1);
-    }
+    // char flow_steer_cmd[512];
+    // sprintf(flow_steer_cmd,
+    //         "ethtool -N %s flow-type tcp4 src-ip %s dst-ip %s src-port %i dst-port %i queue %i",
+    //         opts->tcpd_link_name, opts->tcpd_src_ip, opts->tcpd_dst_ip, src_port, dst_port, num_queues);
+    // ret = system(flow_steer_cmd);
+
+    // // only running the below ethtool commands after last thread/flow is setup
+    // if (flow_idx + t->flow_limit >= opts->num_flows) {
+    //   char ethtool_cmd[512];
+    //   sprintf(ethtool_cmd, "ethtool --set-priv-flags %s enable-strict-header-split on", opts->tcpd_link_name);
+    //   ret = ret | system(ethtool_cmd);
+    //   sprintf(ethtool_cmd, "ethtool --set-priv-flags %s enable-header-split on", opts->tcpd_link_name);
+    //   ret = ret | system(ethtool_cmd);
+    //   sprintf(ethtool_cmd, "ethtool --set-rxfh-indir %s equal 8", opts->tcpd_link_name);
+    //   ret = ret | system(ethtool_cmd);
+    //   printf("ethtool cmds returned %i, sleeping 1...\n", ret);
+    //   sleep(1);
+    // }
   }
 
   *f_mbuf = tmbuf;
@@ -340,186 +261,6 @@ int tcpd_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct thre
   tmbuf->rx_blks_ = new std::vector<TcpdRxBlock>();
   tmbuf->scattered_data_ = new std::vector<long3>();
   return 0;
-}
-
-int udmabuf_setup_alloc(const struct options *opts, void **f_mbuf) {
-  bool is_client = opts->client;
-  int devfd;
-  int memfd;
-  int buf;
-  int buf_pages;
-  int ret;
-  size_t size = opts->tcpd_phys_len;
-
-  struct tcpdevmem_udma_mbuf *tmbuf;
-  struct dma_buf_create_pages_info pages_create_info;
-  struct udmabuf_create create;
-
-  if (f_mbuf == NULL) return ENOMEM;
-
-  if (*f_mbuf) return 0;
-
-  tmbuf = (struct tcpdevmem_udma_mbuf *)calloc(1, sizeof(struct tcpdevmem_udma_mbuf));
-  if (!tmbuf) {
-    exit(EXIT_FAILURE);
-  }
-
-  devfd = open("/dev/udmabuf", O_RDWR);
-  if (devfd < 0) {
-    printf("%s: [skip,no-udmabuf: Unable to access DMA buffer device file]\n",
-           TEST_PREFIX);
-    exit(70);
-  }
-
-  memfd = memfd_create("udmabuf-test", MFD_ALLOW_SEALING);
-  if (memfd < 0) {
-    printf("%s: [skip,no-memfd]\n", TEST_PREFIX);
-    exit(72);
-  }
-
-  ret = fcntl(memfd, F_ADD_SEALS, F_SEAL_SHRINK);
-  if (ret < 0) {
-    printf("%s: [skip,fcntl-add-seals]\n", TEST_PREFIX);
-    exit(73);
-  }
-
-  ret = ftruncate(memfd, size);
-  if (ret == -1) {
-    printf("%s: [FAIL,memfd-truncate]\n", TEST_PREFIX);
-    exit(74);
-  }
-
-  memset(&create, 0, sizeof(create));
-
-  create.memfd = memfd;
-  create.offset = 0;
-  create.size = size;
-  printf("size=%lu\n", size);
-  buf = ioctl(devfd, UDMABUF_CREATE, &create);
-  if (buf < 0) {
-    printf("%s: [FAIL, create udmabuf]\n", TEST_PREFIX);
-    exit(75);
-  }
-
-  pages_create_info.dma_buf_fd = buf;
-  pages_create_info.create_page_pool = is_client ? 0 : 1;
-
-  ret = sscanf(opts->tcpd_nic_pci_addr, "0000:%llx:%llx.%llx",
-         &pages_create_info.pci_bdf[0],
-         &pages_create_info.pci_bdf[1],
-         &pages_create_info.pci_bdf[2]);
-
-  if (ret != 3) {
-    printf("%s: [FAIL, parse fail]\n", TEST_PREFIX);
-    exit(76);
-  }
-
-  buf_pages = ioctl(buf, DMA_BUF_CREATE_PAGES, &pages_create_info);
-  if (buf_pages < 0) {
-    perror("ioctl DMA_BUF_CREATE_PAGES: [FAIL, create pages fail]\n");
-    exit(77);
-  }
-
-  if (!is_client) {
-    /* TODO hardcoded num_queues */
-    int num_queues = 15;
-    struct dma_buf_pages_bind_rx_queue bind_cmd;
-
-    strcpy(bind_cmd.ifname, "eth1");
-    bind_cmd.rxq_idx = num_queues;
-
-    ret = ioctl(buf_pages, DMA_BUF_PAGES_BIND_RX, &bind_cmd);
-    if (ret < 0) {
-      printf("%s: [FAIL, bind fail queue=%d]\n", TEST_PREFIX,
-            num_queues);
-      exit(78);
-    }
-
-    system("ethtool --set-priv-flags eth1 enable-header-split on");
-    system("ethtool --set-priv-flags eth1 enable-header-split off");
-	  system("ethtool --set-priv-flags eth1 enable-header-split on");
-    sleep(1);
-    printf("toggled header-split\n");
-  }
-
-  struct dma_buf_sync sync = { 0 };
-  sync.flags = DMA_BUF_SYNC_WRITE | DMA_BUF_SYNC_START;
-  ioctl(buf, DMA_BUF_IOCTL_SYNC, &sync);
-
-  *f_mbuf = tmbuf;
-
-  tmbuf->devfd = devfd;
-  tmbuf->memfd = memfd;
-  tmbuf->buf = buf;
-  tmbuf->buf_pages = buf_pages;
-  return 0;
-}
-
-int tcpd_udma_send(int socket, void *f_mbuf, size_t n, int flags) {
-  int buf_pages, buf;
-  struct iovec iov;
-  struct msghdr *msg;
-  struct cmsghdr *cmsg;
-  char buf_dummy[n];
-  char offsetbuf[CMSG_SPACE(sizeof(uint32_t) * 2)];
-  struct tcpdevmem_udma_mbuf *tmbuf;
-
-  if (!f_mbuf) return -1;
-
-  tmbuf = (struct tcpdevmem_udma_mbuf *)f_mbuf;
-  buf_pages = tmbuf->buf_pages;
-  buf = tmbuf->buf;
-  msg = &tmbuf->msg;
-
-  struct dma_buf_sync sync = { 0 };
-  sync.flags = DMA_BUF_SYNC_WRITE | DMA_BUF_SYNC_START;
-  ioctl(buf, DMA_BUF_IOCTL_SYNC, &sync);
-
-  char *buf_mem = NULL;
-  buf_mem = (char *)mmap(NULL, n, PROT_READ | PROT_WRITE, MAP_SHARED, buf, 0);
-  if (buf_mem == MAP_FAILED) {
-    perror("mmap()");
-    exit(1);
-  }
-
-  memcpy(buf_mem, buf_dummy, n);
-
-  sync.flags = DMA_BUF_SYNC_WRITE | DMA_BUF_SYNC_END;
-  ioctl(buf, DMA_BUF_IOCTL_SYNC, &sync);
-
-  munmap(buf_mem, n);
-
-  memset(msg, 0, sizeof(struct msghdr));
-  // memset(cmsg, 0, sizeof(struct cmsghdr));
-
-  iov.iov_base = buf_dummy;
-  iov.iov_len = n;
-
-  msg->msg_iov = &iov;
-  msg->msg_iovlen = 1;
-
-  msg->msg_control = offsetbuf;
-  msg->msg_controllen = sizeof(offsetbuf);
-
-  cmsg = CMSG_FIRSTHDR(msg);
-  cmsg->cmsg_level = SOL_SOCKET;
-  cmsg->cmsg_type = SCM_DEVMEM_OFFSET;
-  cmsg->cmsg_len = CMSG_LEN(sizeof(int) * 2);
-  *((int*)CMSG_DATA(cmsg)) = buf_pages;
-  ((int*)CMSG_DATA(cmsg))[1] = 0;
-
-  ssize_t bytes_sent = sendmsg(socket, msg, MSG_ZEROCOPY);
-  if (bytes_sent < 0 && errno != EWOULDBLOCK && errno != EAGAIN) {
-    perror("sendmsg() error: ");
-    exit(EXIT_FAILURE);
-  }
-
-  if (bytes_sent == 0) {
-    perror("sendmsg() sent 0 bytes. Something is wrong.\n");
-    exit(EXIT_FAILURE);
-  }
-
-  return bytes_sent;
 }
 
 int tcpd_send(int socket, void *buf, size_t n, int flags) {
@@ -612,21 +353,22 @@ int tcpd_recv(int socket, void *f_mbuf, size_t n, int flags, struct thread *t) {
   msg->msg_control = offsetbuf;
   msg->msg_controllen = sizeof(offsetbuf);
 
-  // char *buf_mem = NULL;
-
-  if (msg->msg_flags & MSG_CTRUNC) {
-    printf("fatal, cmsg truncated, current msg_controllen\n");
-  }
-
   rx_blks_->clear();
 
   ssize_t received = recvmsg(socket, msg, MSG_SOCK_DEVMEM | MSG_DONTWAIT);
   if (received < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+    printf("%s %d: recvmsg returned < 0\n", __func__, __LINE__);
+    return -1;
   } else if (received < 0) {
     printf("%s %d\n", __func__, __LINE__);
     return -1;
   } else if (received == 0) {
     printf("Client exited\n");
+    return -1;
+  }
+
+  if (msg->msg_flags & MSG_CTRUNC) {
+    LOG_ERROR(t->cb, "fatal, cmsg truncated, current msg_controllen");
   }
 
   struct cmsghdr *cm = NULL;
@@ -751,4 +493,3 @@ int cuda_flow_cleanup(void *f_mbuf) {
   free(t_mbuf->scattered_data_);
   return 0;
 }
-#endif /* #ifdef WITH_TCPDEVMEM */

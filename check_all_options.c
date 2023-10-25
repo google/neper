@@ -101,28 +101,34 @@ void check_options_tcp_rr(struct options *opts, struct callbacks *cb)
 
 void check_options_tcp_stream(struct options *opts, struct callbacks *cb)
 {
-#ifdef WITH_TCPDEVMEM
+#ifdef WITH_TCPDEVMEM_CUDA
       if (opts->tcpd_gpu_pci_addr) {
             CHECK(cb, opts->tcpd_nic_pci_addr,
                   "Must provide NIC PCI address if GPU PCI address was provided.");
-            CHECK(cb, opts->tcpd_phys_len > 0,
-                  "Must provide non-zero --tcpd-phys-len flag if GPU PCI address was provided.");
 
             if (opts->client) {
                   CHECK(cb, !opts->tcpd_rx_cpy,
                         "Copying CUDA buffer to userspace only allowed on hosts.");
-            } else {
+            }
+      }
+#endif /* WITH_TCPDEVMEM_CUDA */
+#if defined(WITH_TCPDEVMEM_CUDA) || defined(WITH_TCPDEVMEM_UDMA)
+      if (opts->tcpd_nic_pci_addr) {
+            CHECK(cb, opts->tcpd_phys_len > 0,
+                  "Must provide non-zero --tcpd-phys-len flag when running in devmem TCP mode.");
+            CHECK(cb, opts->num_flows == opts->num_threads,
+                  "Thread/Flow count must be equal when running in devmem TCP mode.");
+            CHECK(cb, opts->num_flows == opts->num_ports,
+                  "Number of ports should equal number of flows when running in devmem TCP mode.");
+
+            if (!opts->client) {
                   CHECK(cb, opts->tcpd_src_ip,
                         "Must provide source IP address for devmem TCP host.");
                   CHECK(cb, opts->tcpd_dst_ip,
                         "Must provide destination IP address for devmem TCP host.");
             }
-            CHECK(cb, opts->num_flows == opts->num_threads,
-                  "Thread/Flow count must be equal when running in devmem TCP mode.");
-            CHECK(cb, opts->num_flows == opts->num_ports,
-                  "Number of ports should equal number of flows when running in devmem TCP mode.");
       }
-#endif /* WITH_TCPDEVMEM */
+#endif /* WITH_TCPDEVMEM_CUDA || WITH_TCPDEVMEM_UDMA */
 }
 
 void check_options_udp_rr(struct options *opts, struct callbacks *cb)

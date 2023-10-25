@@ -18,7 +18,10 @@
 #include "flow.h"
 #include "socket.h"
 #include "thread.h"
-#ifdef WITH_TCPDEVMEM
+#ifdef WITH_TCPDEVMEM_CUDA
+#include "tcpdevmem_cuda.h"
+#endif
+#if defined(WITH_TCPDEVMEM_CUDA) || defined(WITH_TCPDEVMEM_UDMA)
 #include "tcpdevmem.h"
 #endif
 
@@ -70,7 +73,7 @@ static void socket_init_not_established(struct thread *t, int s)
                 if (err)
                         PLOG_ERROR(t->cb, "setsockopt(SO_LINGER)");
         }
-#ifdef WITH_TCPDEVMEM
+#ifdef WITH_TCPDEVMEM_CUDA
         if (!t->f_mbuf && opts->tcpd_gpu_pci_addr) {
                 if (tcpd_cuda_setup_alloc(t->opts, &t->f_mbuf, t)) {
                         LOG_FATAL(t->cb, "%s: failed to setup devmem CUDA socket",
@@ -78,9 +81,11 @@ static void socket_init_not_established(struct thread *t, int s)
                         exit(1);
                 }
         }
+#endif /* WITH_TCPDEVMEM_CUDA */
+#if defined(WITH_TCPDEVMEM_CUDA) || defined(WITH_TCPDEVMEM_UDMA)
         if (opts->tcpd_nic_pci_addr)
                 tcpd_setup_socket(s);
-#endif /* WITH_TCPDEVMEM */
+#endif /* WITH_TCPDEVMEM_CUDA || WITH_TCPDEVMEM_UDMA */
 }
 
 /*
@@ -254,7 +259,7 @@ void socket_listen(struct thread *t)
         struct addrinfo *ai = getaddrinfo_or_die(opts->host, opts->port, &hints,
                                                  cb);
         int port = atoi(opts->port);
-#ifdef WITH_TCPDEVMEM
+#if defined(WITH_TCPDEVMEM_CUDA) || defined(WITH_TCPDEVMEM_UDMA)
         /* TCP Devmem:
          * Since each thread has a CUDA buffer, and
          * flow-steering rules are required, threads, TCP connections, and
@@ -266,11 +271,11 @@ void socket_listen(struct thread *t)
          * thread_1/flow_1 listen on x+1 -> thread_1->f_mbuf
          * etc...
          */
-        if (opts->tcpd_gpu_pci_addr) {
+        if (opts->tcpd_nic_pci_addr) {
                 port += t->index;
                 reset_port(ai, port, cb);
         }
-#endif
+#endif /* WITH_TCPDEVMEM_CUDA || WITH_TCPDEVMEM_UDMA */
 
         int i, n, s;
 
@@ -287,7 +292,7 @@ void socket_listen(struct thread *t)
         switch (ai->ai_socktype) {
         case SOCK_STREAM:
                 n = opts->num_ports ? opts->num_ports : 1;
-#ifdef WITH_TCPDEVMEM
+#if defined(WITH_TCPDEVMEM_CUDA) || defined(WITH_TCPDEVMEM_UDMA)
                 /* TCP Devmem:
                  * See TCP Devmem comment above^
                  *
@@ -295,9 +300,9 @@ void socket_listen(struct thread *t)
                  * listens on a port that's 1 larger than the previous thread's
                  * port.
                  */
-                if (opts->tcpd_gpu_pci_addr)
+                if (opts->tcpd_nic_pci_addr)
                         n = 1;
-#endif /* WITH_TCPDEVMEM */
+#endif /* WITH_TCPDEVMEM_CUDA || WITH_TCPDEVMEM_UDMA */
                 for (i = 0; i < n; i++) {
                         s = socket_bind_listener(t, ai);
                         socket_init_not_established(t, s);

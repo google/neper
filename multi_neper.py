@@ -53,13 +53,19 @@ def build_neper_cmd(neper_dir: str, is_client: bool, dev: str,
                     tcpd_validate, tcpd_rx_cpy)->tuple:
 
         cmd = (f"taskset --cpu-list {cpu_list} {neper_dir}/tcp_stream"
-               f" -T {threads} -F {flows} --tcpd-phys-len {phys_len}"
+               f" -T {threads} -F {flows}"
                f" --port {port} --source-port {source_port}"
                f" --control-port {control_port}"
-               f" --buffer-size {buffer_size} --tcpd-nic-pci-addr {nic_pci}"
-               f" --tcpd-gpu-pci-addr {gpu_pci} -l {length}"
+               f" --buffer-size {buffer_size} "
+               f" -l {length}"
                f" --num-ports {flows}")
 
+        if phys_len:
+                cmd += f" --tcpd-phys-len {phys_len}"
+        if nic_pci:
+                cmd += f" --tcpd-nic-pci-addr {nic_pci}"
+        if gpu_pci:
+                cmd += f" --tcpd-gpu-pci-addr {gpu_pci}"
         if tcpd_validate:
                 cmd += " --tcpd-validate"
 
@@ -145,6 +151,7 @@ if __name__ == "__main__":
 
         parser.add_argument("-l", "--length", default=10)
         parser.add_argument("--log", default="WARNING")
+        parser.add_argument("-m", "--mode", default="cuda", help="cuda|udma|default")
 
         args = parser.parse_args()
 
@@ -169,8 +176,12 @@ if __name__ == "__main__":
         is_client = args.client
 
         for i, dev in enumerate(devices):
-                nic_pci = link_to_nic_pci_addr[dev]
-                gpu_pci = link_to_gpu_pci_addr[dev]
+                nic_pci, gpu_pci = None, None
+
+                if args.mode.lower() in ["cuda", "udma"]:
+                        nic_pci = link_to_nic_pci_addr[dev]
+                if args.mode.lower() == "cuda":
+                        gpu_pci = link_to_gpu_pci_addr[dev]
 
                 # increment control port by 1, and src/dst ports by flow_count
                 # for each additional link we're running Neper on
