@@ -354,6 +354,9 @@ int tcpd_recv(int socket, void *f_mbuf, size_t n, int flags, struct thread *t) {
     struct devmemtoken token = { devmemvec->frag_token, 1 };
     struct TcpdRxBlock blk;
 
+    if (devmemvec->frag_size > PAGE_SIZE)
+      continue;
+
     blk.gpu_offset = (uint64_t)devmemvec->frag_offset;
     blk.size = devmemvec->frag_size;
     rx_blks_->emplace_back(blk);
