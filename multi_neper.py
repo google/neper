@@ -81,6 +81,7 @@ def build_neper_cmd(neper_dir: str, is_client: bool, dev: str,
                         cmd += " --tcpd-rx-cpy"
 
         env = {"CUDA_VISIBLE_DEVICES": link_to_gpu_index[dev]}
+        env.update(os.environ.copy())
 
         return (cmd, env)
 
