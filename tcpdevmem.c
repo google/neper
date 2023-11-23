@@ -1,3 +1,7 @@
+#include <linux/if.h>
+#include <linux/dma-buf.h>
+#include <sys/ioctl.h>
+
 #include "flow.h"
 #include "lib.h"
 #include "logging.h"

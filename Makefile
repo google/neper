@@ -24,7 +24,8 @@ ifdef WITH_TCPDEVMEM_CUDA
 	CFLAGS += -DWITH_TCPDEVMEM_CUDA
 endif
 ifdef WITH_TCPDEVMEM_UDMA
-	CFLAGS += -DWITH_TCPDEVMEM_UDMA
+	CFLAGS += -DWITH_TCPDEVMEM_UDMA -DNDEBUG=1 -static -I ~/cos-kernel/usr/include
+	LDFLAGS += -static
 endif
 
 ifndef_any_of = $(filter undefined,$(foreach v,$(1),$(origin $(v))))

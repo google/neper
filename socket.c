@@ -21,6 +21,9 @@
 #ifdef WITH_TCPDEVMEM_CUDA
 #include "tcpdevmem_cuda.h"
 #endif
+#ifdef WITH_TCPDEVMEM_UDMA
+#include "tcpdevmem_udma.h"
+#endif
 #if defined(WITH_TCPDEVMEM_CUDA) || defined(WITH_TCPDEVMEM_UDMA)
 #include "tcpdevmem.h"
 #endif
@@ -82,6 +85,15 @@ static void socket_init_not_established(struct thread *t, int s)
                 }
         }
 #endif /* WITH_TCPDEVMEM_CUDA */
+#ifdef WITH_TCPDEVMEM_UDMA
+        if (!t->f_mbuf && opts->tcpd_nic_pci_addr) {
+                if (udma_setup_alloc(t->opts, &t->f_mbuf, t)) {
+                        LOG_FATAL(t->cb, "%s: failed to setup devmem UDMABUF socket",
+                                  __func__);
+                        exit(1);
+                }
+        }
+#endif /* WITH_TCPDEVMEM_UDMA */
 #if defined(WITH_TCPDEVMEM_CUDA) || defined(WITH_TCPDEVMEM_UDMA)
         if (opts->tcpd_nic_pci_addr)
                 tcpd_setup_socket(s);

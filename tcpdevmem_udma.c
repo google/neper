@@ -1,10 +1,16 @@
-#include <fcntl.h>
+#define __iovec_defined 1
+
 #include <linux/memfd.h>
 #include <linux/if.h>
 #include <linux/dma-buf.h>
+#include <linux/socket.h>
 #include <linux/udmabuf.h>
+#include <linux/uio.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
+
+#include <stddef.h>
+#include <fcntl.h>
 
 #include "flow.h"
 #include "lib.h"
@@ -14,6 +20,11 @@
 #include "thread.h"
 
 #define TEST_PREFIX "ncdevmem_udma"
+
+#ifndef MSG_SOCK_DEVMEM
+#define MSG_SOCK_DEVMEM 0x2000000	/* don't copy devmem pages but return
+					 * them as cmsg instead */
+#endif
 
 int udma_setup_alloc(const struct options *opts, void **f_mbuf, struct thread *t)
 {
