@@ -54,10 +54,6 @@ static void socket_init_not_established(struct thread *t, int s)
 
         if (opts->debug)
                 set_debug(s, 1, cb);
-        if (opts->max_pacing_rate) {
-                uint32_t m = opts->max_pacing_rate;
-                setsockopt(s, SOL_SOCKET, SO_MAX_PACING_RATE, &m, sizeof(m));
-        }
 	if (opts->mark)
 		set_mark(s, opts->mark, cb);
         if (opts->reuseaddr)
@@ -103,8 +99,14 @@ static void socket_init_not_established(struct thread *t, int s)
 
 static void socket_init_established(struct thread *t, int s)
 {
+        const struct options *opts = t->opts;
         struct callbacks *cb = t->cb;
 
+        if (opts->max_pacing_rate) {
+		/* kernels before 5.10 will silently truncate to 32 bits */
+                uint64_t m = opts->max_pacing_rate;
+                setsockopt(s, SOL_SOCKET, SO_MAX_PACING_RATE, &m, sizeof(m));
+        }
         set_nonblocking(s, cb);
 }
 
