@@ -52,8 +52,8 @@ void check_options_common(struct options *opts, struct callbacks *cb)
               "Number of epoll events must be positive.");
         CHECK(cb, opts->max_pacing_rate >= 0,
               "Max pacing rate must be non-negative.");
-        CHECK(cb, opts->max_pacing_rate <= UINT32_MAX,
-              "Max pacing rate cannot exceed 32 bits.");
+        CHECK(cb, opts->max_pacing_rate <= UINT64_MAX,
+              "Max pacing rate cannot exceed 64 bits.");
 }
 
 void check_options_tcp(struct options *opts, struct callbacks *cb)
