@@ -192,6 +192,18 @@ void stream_handler(struct flow *f, uint32_t events)
                  * e.g. Linux kernel tools/testing/selftests/net/msg_zerocopy.c
                  */
         }
+        if (opts->split_bidir && !opts->client &&
+            events & EPOLLOUT && events & EPOLLOUT) {
+                /* See comments in flow.c on bidirectional traffic:
+                 * we use one socket per direction, incoming data means
+                 * this socket is used for client writes and the server should
+                 * stop writing there. This is meant to be called only once;
+                 * leaving only EPOLLIN prevents this to be called again
+                 * without having to store extra state.
+                 */
+                 flow_mod(f, stream_handler, EPOLLIN, true);
+         }
+
 }
 
 int stream_report(struct thread *ts)

@@ -119,6 +119,7 @@ struct options {
         int queue_start;
         int queue_num;
 #endif /* WITH_TCPDEVMEM_CUDA || WITH_TCPDEVMEM_UDMABUF */
+        bool split_bidir;  /* implies enable_read, enable_write, split rx/tx */
         bool enable_read;
         bool enable_write;
         bool enable_tcp_maerts;
