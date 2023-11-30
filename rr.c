@@ -79,6 +79,10 @@ static void crr_client_state_0(struct flow *, uint32_t);
 static ssize_t rr_fn_send(struct flow *f, const char *buf, size_t len,
                           int flags)
 {
+        struct thread *t = flow_thread(f);
+
+        t->io_stats.tx_ops++;
+        t->io_stats.tx_bytes += len;
         return send(flow_fd(f), buf, len, flags);
 }
 
@@ -86,21 +90,37 @@ static ssize_t rr_fn_sendto(struct flow *f, const char *buf, size_t len,
                             int flags)
 {
         const struct rr_state *rr = flow_opaque(f);
+        struct thread *t = flow_thread(f);
+
+        t->io_stats.tx_ops++;
+        t->io_stats.tx_bytes += len;
         return sendto(flow_fd(f), buf, len, flags, (void *)&rr->rr_peer,
                       rr->rr_peerlen);
 }
 
 static ssize_t rr_fn_recv(struct flow *f, char *buf, size_t len)
 {
-        return recv(flow_fd(f), buf, len, 0);
+        struct thread *t = flow_thread(f);
+        ssize_t ret;
+
+        ret = recv(flow_fd(f), buf, len, 0);
+        t->io_stats.rx_ops++;
+        t->io_stats.rx_bytes += ret > 0 ? ret : 0;
+        return ret;
 }
 
 static ssize_t rr_fn_recvfrom(struct flow *f, char *buf, size_t len)
 {
         struct rr_state *rr = flow_opaque(f);
+        struct thread *t = flow_thread(f);
+        ssize_t ret;
+
         rr->rr_peerlen = sizeof(struct sockaddr_storage);
-        return recvfrom(flow_fd(f), buf, len, 0, (void *)&rr->rr_peer,
-                        &rr->rr_peerlen);
+        ret = recvfrom(flow_fd(f), buf, len, 0, (void *)&rr->rr_peer,
+                       &rr->rr_peerlen);
+        t->io_stats.rx_ops++;
+        t->io_stats.rx_bytes += ret > 0 ? ret : 0;
+        return ret;
 }
 
 /* Allocate a message buffer for a rr flow. */

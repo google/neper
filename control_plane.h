@@ -23,13 +23,14 @@ struct control_plane;
 struct options;
 struct countdown_cond;
 struct neper_fn;
+struct thread;
 
 struct control_plane* control_plane_create(struct options *opts,
                                            struct callbacks *cb,
                                            struct countdown_cond *data_pending,
                                            const struct neper_fn *fn);
 void control_plane_start(struct control_plane *cp, struct addrinfo **ai);
-void control_plane_wait_until_done(struct control_plane *cp);
+void control_plane_wait_until_done(struct control_plane *cp, struct thread *t);
 void control_plane_stop(struct control_plane *cp);
 int control_plane_incidents(struct control_plane *cp);
 void control_plane_destroy(struct control_plane *cp);

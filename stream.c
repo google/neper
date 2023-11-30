@@ -128,6 +128,8 @@ void stream_handler(struct flow *f, uint32_t events)
                                 n = recv(fd, mbuf, opts->buffer_size,
                                          opts->recv_flags);
                         } while(n == -1 && errno == EINTR);
+                        t->io_stats.rx_ops++;
+                        t->io_stats.rx_bytes += n > 0 ? n : 0;
                         if (n == -1) {
                                 if (errno != EAGAIN)
                                         PLOG_ERROR(t->cb, "read");
@@ -157,6 +159,8 @@ void stream_handler(struct flow *f, uint32_t events)
                         } else
 #endif /* WITH_TCPDEVMEM_UDMABUF */
                         n = send(fd, mbuf, opts->buffer_size, opts->send_flags);
+                        t->io_stats.tx_ops++;
+                        t->io_stats.tx_bytes += n > 0 ? n : 0;
                         if (n == -1) {
                                 if (errno != EAGAIN)
                                         PLOG_ERROR(t->cb, "send");

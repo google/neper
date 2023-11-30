@@ -25,6 +25,7 @@
 #include "hexdump.h"
 #include "lib.h"
 #include "logging.h"
+#include "thread.h"
 
 /*
  * Client and server exchange typed (struct hs_msg) on the control
@@ -376,15 +377,67 @@ static void sig_alarm_handler(int sig)
         termination_requested = 1;
 }
 
-void control_plane_wait_until_done(struct control_plane *cp)
+static inline uint64_t clock_now(void)
 {
+        struct timespec t;
+
+        common_gettime(&t);
+        return t.tv_nsec + t.tv_sec * 1000000000ul;
+}
+
+struct print_io_stats_info {
+        struct callbacks *cb;
+        struct thread *t;
+        int num_threads;
+        uint64_t start_ns;
+        uint64_t prev_ns;
+        struct io_stats prev;
+};
+
+static void print_io_stats(struct print_io_stats_info *s)
+{
+        const uint64_t now = clock_now();
+        const double dt = 1e-9 * (now - s->prev_ns);
+        struct io_stats cur = {}, prev = s->prev;
+
+        /* Accumulate per-thread stats */
+        for (int i = 0; i < s->num_threads; i++) {
+                cur.tx_ops += s->t[i].io_stats.tx_ops;
+                cur.tx_bytes += s->t[i].io_stats.tx_bytes;
+                cur.rx_ops += s->t[i].io_stats.rx_ops;
+                cur.rx_bytes += s->t[i].io_stats.rx_bytes;
+        }
+        /* save totals for next round */
+        s->prev = cur;
+        s->prev_ns = now;
+
+        /* compute deltas for this interval */
+        cur.tx_ops -= prev.tx_ops;
+        cur.tx_bytes -= prev.tx_bytes;
+        cur.rx_ops -= prev.rx_ops;
+        cur.rx_bytes -= prev.rx_bytes;
+        PRINT(s->cb, "t",
+              "%-10.3lf TX: %6ld ops, %10ld bytes, %8.1lf Mbps; RX: %6ld ops, %10ld bytes, %8.1f Mbps;",
+              (double)(now - s->start_ns) * 1e-9,
+              cur.tx_ops, cur.tx_bytes, cur.tx_bytes * 8 * 1e-6 /dt,
+              cur.rx_ops, cur.rx_bytes, cur.rx_bytes * 8 * 1e-6 / dt);
+}
+
+void control_plane_wait_until_done(struct control_plane *cp, struct thread *t)
+{
+        struct print_io_stats_info s = {
+                .cb = cp->cb, .t = t, .num_threads = cp->opts->num_threads,
+		.start_ns = clock_now(), .prev_ns = clock_now()};
         if (cp->opts->client) {
                 if (cp->opts->test_length > 0) {
                         signal(SIGALRM, sig_alarm_handler);
                         signal(SIGTERM, sig_alarm_handler);
                         alarm(cp->opts->test_length);
+                        const int sleep_ms = cp->opts->iostat_ms ? : 1000;
                         while (!termination_requested) {
-                                sleep(1);
+                                usleep(sleep_ms * 1000);
+                                if (cp->opts->iostat_ms)
+                                        print_io_stats(&s);
                         }
                         LOG_INFO(cp->cb, "finished sleep");
                 } else if (cp->opts->test_length < 0) {
