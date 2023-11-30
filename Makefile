@@ -18,7 +18,18 @@
 
 all: binaries
 
-CFLAGS = -std=c99 -Wall -O3 -g -D_GNU_SOURCE -DNO_LIBNUMA
+CFLAGS := -std=c99 -Wall -O3 -g -D_GNU_SOURCE -DNO_LIBNUMA
+
+ifdef WITH_TCPDEVMEM_CUDA
+	CFLAGS += -DWITH_TCPDEVMEM_CUDA
+endif
+ifdef WITH_TCPDEVMEM_UDMA
+	CFLAGS += -DWITH_TCPDEVMEM_UDMA -DNDEBUG=1 -static -I ~/cos-kernel/usr/include
+	LDFLAGS += -static
+endif
+
+ifndef_any_of = $(filter undefined,$(foreach v,$(1),$(origin $(v))))
+ifdef_any_of = $(filter-out undefined,$(foreach v,$(1),$(origin $(v))))
 
 lib := \
 	check_all_options.o \
@@ -49,6 +60,16 @@ lib := \
 tcp_rr-objs := tcp_rr_main.o tcp_rr.o rr.o $(lib)
 
 tcp_stream-objs := tcp_stream_main.o tcp_stream.o stream.o $(lib)
+ifdef WITH_TCPDEVMEM_CUDA
+	tcp_stream-objs += tcpdevmem_cuda.o
+endif
+ifdef WITH_TCPDEVMEM_UDMA
+	tcp_stream-objs += tcpdevmem_udma.o
+endif
+ifneq ($(call ifdef_any_of,WITH_TCPDEVMEM_CUDA WITH_TCPDEVMEM_UDMA),)
+	tcp_stream-objs += tcpdevmem.o
+endif
+
 
 tcp_crr-objs := tcp_crr_main.o tcp_crr.o rr.o $(lib)
 
@@ -64,11 +85,18 @@ psp_rr-objs := psp_rr_main.o psp_rr.o rr.o psp_lib.o $(lib)
 
 ext-libs := -lm -lrt -lpthread
 
+tcpdevmem_cuda.o: tcpdevmem_cuda.cu
+	nvcc -arch=sm_90 -O3 -g -D_GNU_SOURCE -DNO_LIBNUMA -DWITH_TCPDEVMEM_CUDA -c -o $@ $^
+
 tcp_rr: $(tcp_rr-objs)
 	$(CC) $(LDFLAGS) -o $@ $^ $(ext-libs)
 
 tcp_stream: $(tcp_stream-objs)
+ifdef WITH_TCPDEVMEM_CUDA
+	g++ $(LDFLAGS) -o $@ $^ $(ext-libs) -lc -L/usr/local/cuda/lib64 -lcudart -lcuda
+else
 	$(CC) $(LDFLAGS) -o $@ $^ $(ext-libs)
+endif
 
 tcp_crr: $(tcp_crr-objs)
 	$(CC) $(LDFLAGS) -o $@ $^ $(ext-libs)
