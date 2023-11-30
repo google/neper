@@ -44,7 +44,7 @@ struct flags_parser *add_flags_common(struct flags_parser *fp)
         DEFINE_FLAG(fp, bool,         nonblocking,   false,    0,  "Make sure syscalls are all nonblocking");
         DEFINE_FLAG(fp, bool,         freebind,      false,    0,  "Set FREEBIND socket option");
         DEFINE_FLAG(fp, double,       interval,      1.0,     'I', "For how many seconds that a sample is generated");
-        DEFINE_FLAG(fp, long long,    max_pacing_rate, 0,     'm', "SO_MAX_PACING_RATE value; use as 32-bit unsigned");
+        DEFINE_FLAG(fp, long long,    max_pacing_rate, 0,     'm', "SO_MAX_PACING_RATE value; use as 64-bit unsigned");
         DEFINE_FLAG_PARSER(fp,        max_pacing_rate, parse_max_pacing_rate);
         DEFINE_FLAG(fp, int,          mark,          0,       'M', "SO_MARK value; use as 32-bit unsigned");
         DEFINE_FLAG(fp, const char *, local_hosts,   NULL,    'L', "Local hostnames or IP addresses");
