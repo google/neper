@@ -107,6 +107,7 @@ struct options {
         bool async_connect;
 
         /* tcp_stream */
+        bool split_bidir;  /* implies enable_read, enable_write, split rx/tx */
         bool enable_read;
         bool enable_write;
         bool enable_tcp_maerts;

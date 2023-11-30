@@ -140,6 +140,7 @@ struct flags_parser *add_flags_tcp_stream(struct flags_parser *fp)
         DEFINE_FLAG(fp, bool,          skip_rx_copy,    false,    0,  "Skip kernel->user payload copy on receives");
         DEFINE_FLAG(fp, bool,          enable_read,     false,   'r', "Read from flows? enabled by default for the server");
         DEFINE_FLAG(fp, bool,          enable_write,    false,   'w', "Write to flows? Enabled by default for the client");
+        DEFINE_FLAG(fp, bool,          split_bidir ,    false,    0,  "Bidirectional using separate tx/rx sockets");
         DEFINE_FLAG(fp, bool,          enable_tcp_maerts,    false,   'M', "Enables TCP_MAERTS test (server writes and client reads). It overrides enable_read, and enable_write");
         DEFINE_FLAG(fp, bool,          async_connect,   false,   0,  "use non blocking connect");
 

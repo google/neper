@@ -50,6 +50,14 @@ int main(int argc, char **argv)
                 else
                         opts.enable_read = true;
         }
+        if (opts.split_bidir) {
+                opts.enable_read = true;
+                opts.enable_write = true;
+                opts.num_flows *= 2;
+        }
+
+        if (opts.enable_read && opts.enable_write)
+                opts.num_flows *= 2;
 
         if (opts.skip_rx_copy)
                 opts.recv_flags = MSG_TRUNC;
