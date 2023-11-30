@@ -69,6 +69,14 @@ struct rate_limit {
         struct flow **pending_flows;    /* size is flow_count */
 };
 
+/* Store per-thread io stats */
+struct io_stats {
+        uint64_t tx_ops;
+        uint64_t tx_bytes;
+        uint64_t rx_ops;
+        uint64_t rx_bytes;
+};
+
 struct thread {
         int index;
         pthread_t id;
@@ -98,6 +106,7 @@ struct thread {
         struct neper_histo_factory *histo_factory;
         struct neper_stats *stats;
         struct neper_rusage *rusage;
+	struct io_stats io_stats;
         struct countdown_cond *data_pending;
         struct rate_limit rl;
         struct flow **flows;  /* indexed by flow_id(flow) */
