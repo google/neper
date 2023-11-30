@@ -570,7 +570,7 @@ int run_main_thread(struct options *opts, struct callbacks *cb,
         pthread_mutex_lock(&time_start_mutex);
         getrusage_enhanced(RUSAGE_SELF, &rusage_start); /* rusage start! */
         pthread_mutex_unlock(&time_start_mutex);
-        control_plane_wait_until_done(cp);
+        control_plane_wait_until_done(cp, ts);
         getrusage_enhanced(RUSAGE_SELF, &rusage_end); /* rusage end! */
 
         stop_worker_threads(cb, opts->num_threads, ts, &ready_barrier,

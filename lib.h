@@ -101,6 +101,7 @@ struct options {
         const char *control_port;
         const char *port;
         int source_port;
+        unsigned long iostat_ms;
         const char *all_samples;
         const char secret[32]; /* includes test name */
         bool async_connect;
