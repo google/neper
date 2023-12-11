@@ -121,6 +121,7 @@ void flow_create(const struct flow_create_args *args)
 {
         struct thread *t = args->thread;
         struct flow *f = calloc_or_die(1, sizeof(struct flow), t->cb);
+        int events = args->events;      /* must be overriden in some cases */
 
         f->f_thread = t;
         f->f_opaque = args->opaque;
@@ -139,7 +140,27 @@ void flow_create(const struct flow_create_args *args)
                         thread_store_flow_or_die(t, f);
                 }
         }
-        flow_ctl(f, EPOLL_CTL_ADD, args->handler, args->events, true);
+        /* In bidirectional mode, acks are piggybacked behind data and this
+         * creates unwanted dependencies between forward and reverse flows.
+         *
+         * To solve the problem, IN BIDIRECTIONAL STREAM MODE ONLY we use
+         * one tcp socket per direction (the user-specified number of flows
+         * is doubled after option parsing), used as follows:
+         * - client and server always read from all sockets
+         * - client sends only on half of the sockets (those witheven f_id).
+         *   This is done by disabling EPOLLOUT on alternate sockets, below.
+         * - server starts sending on all sockets, but will stop sending and
+         *   disable EPOLLOUT on sockets on which data is received.
+         *   This is done in stream_handler.
+         * The above allows to have half of the sockets in tx, and half in rx,
+         * without control plane modifications.
+         * For backward compatibility reasons, this is controlled by a
+         * command-line option, --split-bidir
+         */
+        if (t->opts->split_bidir && t->opts->client)
+                events &= (f->f_id & 1) ? EPOLLOUT : EPOLLIN;
+
+        flow_ctl(f, EPOLL_CTL_ADD, args->handler, events, true);
 }
 
 /* Returns true if the deadline for the flow has expired.
