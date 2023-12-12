@@ -353,7 +353,7 @@ int socket_connect_one(struct thread *t, int flags)
                         source.sin_family = AF_INET;
                         source.sin_addr.s_addr = INADDR_ANY;
                         source.sin_port = htons(port);
-                        if (bind(s, &source, sizeof(source))) {
+                        if (bind(s, (const struct sockaddr *)&source, sizeof(source))) {
                                 PLOG_FATAL(t->cb, "bind for source port");
                         }
                 } else {
@@ -362,7 +362,7 @@ int socket_connect_one(struct thread *t, int flags)
                         source.sin6_family = AF_INET6;
                         source.sin6_addr = in6addr_any;
                         source.sin6_port = htons(port);
-                        if (bind(s, &source, sizeof(source))) {
+                        if (bind(s, (const struct sockaddr *)&source, sizeof(source))) {
                                 PLOG_FATAL(t->cb, "bind for source port");
                         }
                 }

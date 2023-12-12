@@ -44,7 +44,7 @@ void psp_ctrl_client(int ctrl_conn, struct callbacks *cb) {
         struct sockaddr_in6 kmaddr;
         socklen_t kmaddrlen = sizeof(kmaddr);
 
-        if (getpeername(ctrl_conn, &kmaddr, &kmaddrlen) < 0) {
+        if (getpeername(ctrl_conn, (struct sockaddr *)&kmaddr, &kmaddrlen) < 0) {
                 LOG_FATAL(cb, "Can't get peer address: %s", strerror(errno));
         }
         kmaddr.sin6_port = htons(port);
@@ -54,7 +54,7 @@ void psp_ctrl_client(int ctrl_conn, struct callbacks *cb) {
         if (kmfd < 0) {
                 LOG_FATAL(cb, "Can't create km client socket: %s", strerror(errno));
         }
-        if (connect(kmfd, &kmaddr, sizeof(kmaddr)) < 0) {
+        if (connect(kmfd, (const struct sockaddr *)&kmaddr, sizeof(kmaddr)) < 0) {
                 LOG_FATAL(cb, "Can't connect km client socket: %s", strerror(errno));
         }
         LOG_INFO(cb, "Connected to km socket");
@@ -100,14 +100,14 @@ static void *psp_key_server(void *arg)
         if (setsockopt(kmlfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
                 LOG_FATAL(cb, "Can't set SO_REUSEADDR on listen socket: %s", strerror(errno));
         }
-        if (bind(kmlfd, &kmaddr, sizeof(kmaddr)) < 0) {
+        if (bind(kmlfd, (const struct sockaddr *)&kmaddr, sizeof(kmaddr)) < 0) {
                 LOG_FATAL(cb, "Can't bind listen socket: %s", strerror(errno));
         }
         if (listen(kmlfd, 5) < 0) {
                 LOG_FATAL(cb, "Can't listen on listen socket: %s", strerror(errno));
         }
         LOG_INFO(cb, "Waiting for connection on listen socket");
-        kmfd = accept(kmlfd, &acceptaddr, &acceptaddrlen);
+        kmfd = accept(kmlfd, (struct sockaddr *)&acceptaddr, &acceptaddrlen);
         if (kmfd < 0) {
                 LOG_FATAL(cb, "Can't accept on listen socket: %s", strerror(errno));
         }
