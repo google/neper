@@ -21,7 +21,7 @@ all: binaries
 CFLAGS := -std=c99 -Wall -O3 -g -D_GNU_SOURCE -DNO_LIBNUMA
 
 ifdef WITH_TCPDEVMEM_CUDA
-	CFLAGS += -DWITH_TCPDEVMEM_CUDA
+	CFLAGS += -DWITH_TCPDEVMEM_CUDA -I/kernel-includes/include
 endif
 ifdef WITH_TCPDEVMEM_UDMA
 	CFLAGS += -DWITH_TCPDEVMEM_UDMA -DNDEBUG=1 -static -I ~/cos-kernel/usr/include
@@ -86,7 +86,7 @@ psp_rr-objs := psp_rr_main.o psp_rr.o rr.o psp_lib.o $(lib)
 ext-libs := -lm -lrt -lpthread
 
 tcpdevmem_cuda.o: tcpdevmem_cuda.cu
-	nvcc -arch=sm_90 -O3 -g -D_GNU_SOURCE -DNO_LIBNUMA -DWITH_TCPDEVMEM_CUDA -c -o $@ $^
+	nvcc -arch=sm_90 -O3 -g -I/kernel-includes/include -D_GNU_SOURCE -DNO_LIBNUMA -DWITH_TCPDEVMEM_CUDA -c -o $@ $^
 
 tcp_rr: $(tcp_rr-objs)
 	$(CC) $(LDFLAGS) -o $@ $^ $(ext-libs)
