@@ -1,6 +1,9 @@
+#define __iovec_defined 1
+
 #include <cuda.h>
 #include <cuda_runtime.h>
 
+#include <linux/uio.h>
 #include <asm-generic/errno-base.h>
 #include <asm-generic/socket.h>
 #include <errno.h>
