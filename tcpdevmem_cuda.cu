@@ -167,7 +167,6 @@ err_close_dmabuf:
 int tcpd_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct thread *t)
 {
   bool is_client = opts->client;
-  int ret;
   void *gpu_gen_mem_;
   int gpu_mem_fd_;
   int dma_buf_fd_;
