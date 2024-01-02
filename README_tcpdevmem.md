@@ -4,6 +4,8 @@ Table of Contents
 - [Neper with TCPDirect run instructions](#neper-with-tcpdirect-run-instructions)
   - [TCPDirect CUDA: tcp\_stream within Docker container](#tcpdirect-cuda-tcp_stream-within-docker-container)
     - [Building your own image for testing](#building-your-own-image-for-testing)
+      - [building the image on your workstation, within the repo directory](#building-the-image-on-your-workstation-within-the-repo-directory)
+      - [creating a container on the VM](#creating-a-container-on-the-vm)
     - [Override CUDA library directory (DLVM)](#override-cuda-library-directory-dlvm)
   - [TCPDirect UDMA: Compiling tcp\_stream](#tcpdirect-udma-compiling-tcp_stream)
   - [Running tcp\_stream](#running-tcp_stream)
@@ -19,6 +21,7 @@ A TCPDirect-Cuda enabled Docker image exists at `gcr.io/a3-tcpd-staging-hostpool
 
 
 ```
+# On COS VM, do:
 ./run_neper_container.sh
 
 # within the container
@@ -40,10 +43,27 @@ SRCS=192.168.1.23,192.168.2.23,192.168.3.23,192.168.4.23
 
 ### Building your own image for testing
 
+#### building the image on your workstation, within the repo directory
 
 ```
-# within the repo directory
-docker build -t neperc .
+git clone -b tcpd https://github.com/google/neper.git
+cd neper
+
+# copy kernel header files to Neper working directory
+# (assumed to be found in ~/cos-kernel/usr/include)
+mkdir usr
+cp -r ~/cos-kernel/usr/include/ ./usr/
+
+IMAGE_NAME='gcr.io/a3-tcpd-staging-hostpool/$USER/neper'
+docker build -t $IMAGE_NAME .
+docker push $IMAGE_NAME
+```
+
+
+#### creating a container on the VM
+
+```
+IMAGE_NAME='gcr.io/a3-tcpd-staging-hostpool/$USER/neper'
 
 function run_neper_container() {
   docker run \
@@ -70,10 +90,8 @@ function run_neper_container() {
     "$@"
 }
 
-run_neper_container -it neperc bash
+run_neper_container -it $IMAGE_NAME bash
 ```
-
-You can replace the `neperc` image name and run `docker push ${image_name}` if you’re building the image on one host, and running a container on another.
 
 
 ### Override CUDA library directory (DLVM)
@@ -87,19 +105,22 @@ CUDA_LIB_DIR=/usr/lib/x86_64-linux-gnu ./run_neper_container.sh
 
 ## TCPDirect UDMA: Compiling tcp_stream
 
+**UDMA-capable tcp_stream can be built statically on a workstation.**
+
 Neper can be built statically on a host with UDMA header files.
 
-The Makefile assumes that the header files are found at `~/cos-kernel/usr/include`. You can manually change the directory in the Makefile:
-
-
-```
-CFLAGS += -DWITH_TCPDEVMEM_UDMA -DNDEBUG=1 -static -I ~/cos-kernel/usr/include <your new directory>
-```
+The Makefile assumes that the header files are found at `usr/include` within the Neper directory.
 
 ```
 # clone the Neper repository and checkout the tcpd branch
 git clone -b tcpd https://github.com/google/neper.git
 cd neper
+
+# copy kernel header files to Neper working directory
+# (assumed to be found in ~/cos-kernel/usr/include)
+mkdir usr
+cp -r ~/cos-kernel/usr/include/ ./usr/
+
 make tcp_steam WITH_TCPDEVMEM_UDMA=1
 
 # copy the binary to your hosts
@@ -109,7 +130,6 @@ scp multi_neper.py root@${HOST1}:~/
 scp tcp_stream root@${HOST2}:~/
 scp multi_neper.py root@${HOST2}:~/
 ```
-
 
 
 ## Running tcp_stream
