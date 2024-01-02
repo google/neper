@@ -29,6 +29,7 @@ done
 function run_neper_container() {
   docker run \
     --name neper_c \
+    --rm \
     -u 0 --network=host \
     --cap-add=IPC_LOCK \
     --userns=host \
@@ -53,4 +54,4 @@ function run_neper_container() {
 
 sudo iptables -I INPUT -p tcp -m tcp -j ACCEPT
 
-run_neper_container -it "gcr.io/a3-tcpd-staging-hostpool/neper" bash
+run_neper_container -it "gcr.io/a3-tcpd-staging-hostpool/neper" $@

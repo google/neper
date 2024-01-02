@@ -17,12 +17,9 @@ Table of Contents
 
 ## TCPDirect CUDA: tcp_stream within Docker container
 
-A TCPDirect-Cuda enabled Docker image exists at `gcr.io/a3-tcpd-staging-hostpool/neper`. The `run_neper_container.sh` script makes it easy to run Neper:
-
-
 ```
 # On COS VM, do:
-./run_neper_container.sh
+./run_neper_container.sh bash
 
 # within the container
 FLOWS=2
@@ -38,7 +35,6 @@ SRCS=192.168.1.23,192.168.2.23,192.168.3.23,192.168.4.23
   --client \
   --mode cuda
 ```
-
 
 
 ### Building your own image for testing
@@ -99,7 +95,7 @@ run_neper_container -it $IMAGE_NAME bash
 The script assumes that `libcuda.so*` files are found in `/var/lib/nvidia/lib64`. In case this isn’t true (like when on DLVM), you can override the default env var: `CUDA_LIB_DIR`:
 
 ```
-CUDA_LIB_DIR=/usr/lib/x86_64-linux-gnu ./run_neper_container.sh
+CUDA_LIB_DIR=/usr/lib/x86_64-linux-gnu ./run_neper_container.sh bash
 ```
 
 
