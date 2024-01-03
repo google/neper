@@ -3,6 +3,7 @@
 Table of Contents
 - [Neper with TCPDirect run instructions](#neper-with-tcpdirect-run-instructions)
   - [TCPDirect CUDA: tcp\_stream within Docker container](#tcpdirect-cuda-tcp_stream-within-docker-container)
+      - [Note on accessing Neper logs or long-running container:](#note-on-accessing-neper-logs-or-long-running-container)
     - [Building your own image for testing](#building-your-own-image-for-testing)
       - [building the image on your workstation, within the repo directory](#building-the-image-on-your-workstation-within-the-repo-directory)
       - [creating a container on the VM](#creating-a-container-on-the-vm)
@@ -19,15 +20,14 @@ Table of Contents
 
 ```
 # On COS VM, do:
-./run_neper_container.sh bash
-
-# within the container
 FLOWS=2
 BUF_SIZE=409600
 DEVS=eth1,eth2,eth3,eth4
 DSTS=192.168.1.26,192.168.2.26,192.168.3.26,192.168.4.26
 SRCS=192.168.1.23,192.168.2.23,192.168.3.23,192.168.4.23
-./multi_neper.py --hosts $DSTS \
+
+./run_neper_container.sh ./multi_neper.py \
+  --hosts $DSTS \
   --devices $DEVS --buffer-size $BUF_SIZE \
   --flows $FLOWS --threads $FLOWS \
   --src-ips $SRCS --log DEBUG \
@@ -36,6 +36,31 @@ SRCS=192.168.1.23,192.168.2.23,192.168.3.23,192.168.4.23
   --mode cuda
 ```
 
+#### Note on accessing Neper logs or long-running container:
+
+If access to the log files are required (i.e. when using `tcpd-validate` flag and checking the logs for data integrity), you can start the container, then run `multi_neper.py` so that you don't exit out of the container after the Neper run completes.
+
+```
+./run_neper_container.sh bash
+
+# within the container
+FLOWS=2
+BUF_SIZE=409600
+DEVS=eth1,eth2,eth3,eth4
+DSTS=192.168.1.26,192.168.2.26,192.168.3.26,192.168.4.26
+SRCS=192.168.1.23,192.168.2.23,192.168.3.23,192.168.4.23
+./multi_neper.py \
+  --hosts $DSTS \
+  --devices $DEVS --buffer-size $BUF_SIZE \
+  --flows $FLOWS --threads $FLOWS \
+  --src-ips $SRCS --log DEBUG \
+  --q-num $FLOWS --phys-len 2147483648 \
+  --client \
+  --mode cuda
+
+# grep log files
+ls | grep log
+```
 
 ### Building your own image for testing
 
