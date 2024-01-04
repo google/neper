@@ -13,8 +13,9 @@ ARG CUDA12_PTX='-gencode=arch=compute_90,code=compute_90'
 
 WORKDIR /third_party
 
-RUN git clone -b tcpd https://github.com/google/neper.git
-WORKDIR neper
+# this assumes that kernel hdr files have been copied into ${neper_dir}/usr/,
+# which will then be copied into the container
+COPY . /third_party
 RUN make tcp_stream WITH_TCPDEVMEM_CUDA=1
 
 RUN chmod +777 /tmp
