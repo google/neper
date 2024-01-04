@@ -23,9 +23,7 @@
 // use 0.01 us time resolution
 static const int TIME_RESOLUTION = 100 * 1000000;
 
-struct histo_impl {
-        struct neper_histo histo;
-
+struct neper_histo {
         const struct thread *thread;
 
         int num_buckets;  /* # of buckets allocated */
@@ -60,55 +58,26 @@ struct histo_impl {
         bool first_all;   /* Is this the first call to all_percent() */
 };
 
-struct histo_factory_impl {
-        struct neper_histo_factory factory;
-
+struct neper_histo_factory {
         const struct thread *thread;
 
         int num_buckets;  /* # of buckets allocated */
         int *ceil;        /* Max value that can be hashed into each bucket */
 };
 
-static double histo_all_min(const struct neper_histo *histo)
+double neper_histo_min(const struct neper_histo *histo)
 {
-        const struct histo_impl *impl = (void *)histo;
-
-        return impl->all_min;
+        return histo->one_min;
 }
 
-static double histo_one_min(const struct neper_histo *histo)
+double neper_histo_max(const struct neper_histo *histo)
 {
-        const struct histo_impl *impl = (void *)histo;
-
-        return impl->one_min;
+        return histo->one_max;
 }
 
-static double histo_all_max(const struct neper_histo *histo)
+double neper_histo_mean(const struct neper_histo *histo)
 {
-        const struct histo_impl *impl = (void *)histo;
-
-        return impl->all_max;
-}
-
-static double histo_one_max(const struct neper_histo *histo)
-{
-        const struct histo_impl *impl = (void *)histo;
-
-        return impl->one_max;
-}
-
-static double histo_all_mean(const struct neper_histo *histo)
-{
-        const struct histo_impl *impl = (void *)histo;
-
-        return impl->all_sum / impl->all_count;
-}
-
-static double histo_one_mean(const struct neper_histo *histo)
-{
-        const struct histo_impl *impl = (void *)histo;
-
-        return impl->one_sum / impl->one_count;
+        return histo->one_sum / histo->one_count;
 }
 
 static double histo_stddev(long double N, long double S, long double Q)
@@ -116,21 +85,12 @@ static double histo_stddev(long double N, long double S, long double Q)
         return sqrt(N*Q - S*S) / N;
 }
 
-static double histo_all_stddev(const struct neper_histo *histo)
+double neper_histo_stddev(const struct neper_histo *histo)
 {
-        struct histo_impl *impl = (void *)histo;
-
-        return histo_stddev(impl->all_count, impl->all_sum, impl->all_sum2);
+        return histo_stddev(histo->one_count, histo->one_sum, histo->one_sum2);
 }
 
-static double histo_one_stddev(const struct neper_histo *histo)
-{
-        struct histo_impl *impl = (void *)histo;
-
-        return histo_stddev(impl->one_count, impl->one_sum, impl->one_sum2);
-}
-
-static void histo_all_finalize(struct histo_impl *impl)
+static void histo_all_finalize(struct neper_histo *impl)
 {
         double cent = impl->all_count / 100.0;
         double nnn  = (impl->all_count * 99.9) / 100.0;
@@ -164,7 +124,7 @@ static void histo_all_finalize(struct histo_impl *impl)
         }
 }
 
-static void histo_one_finalize(struct histo_impl *impl)
+static void histo_one_finalize(struct neper_histo *impl)
 {
         double cent = impl->one_count / 100.0;
         double nnn  = (impl->one_count * 99.9) / 100.0;
@@ -197,10 +157,8 @@ static void histo_one_finalize(struct histo_impl *impl)
         }
 }
 
-static double histo_all_percent(struct neper_histo *histo, int percentage)
+static double histo_all_percent(struct neper_histo *impl, int percentage)
 {
-        struct histo_impl *impl = (void *)histo;
-
         histo_all_finalize(impl);
 
         switch (percentage) {
@@ -220,10 +178,8 @@ static double histo_all_percent(struct neper_histo *histo, int percentage)
         }
 }
 
-static double histo_one_percent(const struct neper_histo *histo, int percentage)
+double neper_histo_percent(const struct neper_histo *impl, int percentage)
 {
-        struct histo_impl *impl = (void *)histo;
-
         switch (percentage) {
         case 0:
                 return impl->one_min;
@@ -241,18 +197,13 @@ static double histo_one_percent(const struct neper_histo *histo, int percentage)
         }
 }
 
-static uint64_t histo_events(const struct neper_histo *histo)
+uint64_t neper_histo_samples(const struct neper_histo *histo)
 {
-        struct histo_impl *impl = (void *)histo;
-
-        return impl->all_count;
+        return histo->all_count;
 }
 
-static void histo_add(struct neper_histo *des, const struct neper_histo *src)
+void neper_histo_add(struct neper_histo *desi, const struct neper_histo *srci)
 {
-        struct histo_impl *desi = (void *)des;
-        const struct histo_impl *srci = (void *)src;
-
         desi->cur_count += srci->all_count;
         desi->cur_sum   += srci->all_sum;
         desi->cur_sum2  += srci->all_sum2;
@@ -266,7 +217,7 @@ static void histo_add(struct neper_histo *des, const struct neper_histo *src)
 }
 
 // binary search for the correct bucket index
-static int histo_find_bucket_idx(struct histo_impl *impl, int ticks)
+static int histo_find_bucket_idx(struct neper_histo *impl, int ticks)
 {
         int l_idx = 0;
         int r_idx = impl->num_buckets - 1;
@@ -291,9 +242,8 @@ static int histo_find_bucket_idx(struct histo_impl *impl, int ticks)
         return -1;
 }
 
-static void histo_event(struct neper_histo *histo, double delta_s)
+void neper_histo_event(struct neper_histo *impl, double delta_s)
 {
-        struct histo_impl *impl = (void *)histo;
         int ticks = delta_s * TIME_RESOLUTION;
         int i;
 
@@ -314,10 +264,8 @@ static void histo_event(struct neper_histo *histo, double delta_s)
         impl->cur_buckets[i]++;
 }
 
-static void histo_epoch(struct neper_histo *histo)
+void neper_histo_epoch(struct neper_histo *impl)
 {
-        struct histo_impl *impl = (void *)histo;
-
         impl->all_count += impl->cur_count;
         impl->one_count  = impl->cur_count;
         impl->cur_count  = 0;
@@ -370,16 +318,16 @@ static void histo_hash(int num_buckets, double growth, int *ceils)
         }
 }
 
-static void histo_print(struct neper_histo *histo)
+void neper_histo_print(struct neper_histo *histo)
 {
-        struct histo_impl *impl = (void *)histo;
-        const struct thread *t = impl->thread;
+        const struct thread *t = histo->thread;
         const struct options *opts = t->opts;
 
-        PRINT(t->cb, "latency_min", "%.9f", histo_all_min(histo));
-        PRINT(t->cb, "latency_max", "%.9f", histo_all_max(histo));
-        PRINT(t->cb, "latency_mean", "%.9f", histo_all_mean(histo));
-        PRINT(t->cb, "latency_stddev", "%.9f", histo_all_stddev(histo));
+        PRINT(t->cb, "latency_min", "%.9f", histo->all_min);
+        PRINT(t->cb, "latency_max", "%.9f", histo->all_max);
+        PRINT(t->cb, "latency_mean", "%.9f", histo->all_sum / histo->all_count);
+        PRINT(t->cb, "latency_stddev", "%.9f",
+              histo_stddev(histo->all_count, histo->all_sum, histo->all_sum2));
 
         int i;
         for (i = 0; i < 100; i++)
@@ -396,10 +344,8 @@ static void histo_print(struct neper_histo *histo)
                 histo_all_percent(histo, PER_INDEX_99_99));
 }
 
-static void histo_fini(struct neper_histo *histo)
+void neper_histo_delete(struct neper_histo *impl)
 {
-        struct histo_impl *impl = (void *)histo;
-
         if (impl) {
                 free(impl->all_buckets);
                 free(impl->cur_buckets);
@@ -408,26 +354,10 @@ static void histo_fini(struct neper_histo *histo)
         }
 }
 
-static struct neper_histo *neper_histo_factory_create(
-        const struct neper_histo_factory *factory)
+struct neper_histo *neper_histo_new( const struct neper_histo_factory *fimpl)
 {
-        const struct histo_factory_impl *fimpl = (void *)factory;
 
-        struct histo_impl *impl = calloc(1, sizeof(struct histo_impl));
-        struct neper_histo *histo = &impl->histo;
-
-        histo->min     = histo_one_min;
-        histo->max     = histo_one_max;
-        histo->mean    = histo_one_mean;
-        histo->stddev  = histo_one_stddev;
-        histo->percent = histo_one_percent;
-        histo->events  = histo_events;
-
-        histo->add   = histo_add;
-        histo->event = histo_event;
-        histo->epoch = histo_epoch;
-        histo->print = histo_print;
-        histo->fini  = histo_fini;
+        struct neper_histo *impl = calloc(1, sizeof(*impl));
 
         impl->thread      = fimpl->thread;
         impl->num_buckets = fimpl->num_buckets;
@@ -441,28 +371,21 @@ static struct neper_histo *neper_histo_factory_create(
 
         impl->first_all = true;
 
-        return histo;
+        return impl;
 }
 
-void neper_histo_factory_fini(struct neper_histo_factory *factory)
+void neper_histo_factory_delete(struct neper_histo_factory *impl)
 {
-        struct histo_factory_impl *impl = (void *)factory;
-
         if (impl) {
                 free(impl->ceil);
                 free(impl);
         }
 }
 
-struct neper_histo_factory *neper_histo_factory(const struct thread *t,
+struct neper_histo_factory *neper_histo_factory_new(const struct thread *t,
                                                 int num_buckets, double growth)
 {
-        struct histo_factory_impl *impl =
-                calloc(1, sizeof(struct histo_factory_impl));
-        struct neper_histo_factory *factory = &impl->factory;
-
-        factory->create   = neper_histo_factory_create;
-        factory->fini     = neper_histo_factory_fini;
+        struct neper_histo_factory *impl = calloc(1, sizeof(*impl));
 
         impl->thread      = t;
         impl->num_buckets = num_buckets;
@@ -470,5 +393,5 @@ struct neper_histo_factory *neper_histo_factory(const struct thread *t,
 
         histo_hash(num_buckets, growth, impl->ceil);
 
-        return factory;
+        return impl;
 }
