@@ -144,7 +144,7 @@ static struct neper_stat *rr_latency_init(struct flow *f)
         if (t->opts->nostats)
                 return NULL;
 
-        struct neper_histo *histo = neper_histo_new(t->histo_factory);
+        struct neper_histo *histo = neper_histo_new(t, DEFAULT_K_BITS);
 
         size = sizeof(struct rr_snap_opaque) + t->percentiles * sizeof(double);
 
@@ -517,7 +517,7 @@ int rr_report_stats(struct thread *tinfo)
         int num_events = thread_stats_events(tinfo);
         PRINT(cb, "num_transactions", "%d", num_events);
 
-        struct neper_histo *sum = neper_histo_new(tinfo[0].histo_factory);
+        struct neper_histo *sum = neper_histo_new(tinfo, DEFAULT_K_BITS);
         for (i = 0; i < opts->num_threads; i++)
                 tinfo[i].stats->sumforeach(tinfo[i].stats, fn_add, sum);
         neper_histo_epoch(sum);

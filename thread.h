@@ -24,7 +24,6 @@
 
 struct addrinfo;
 struct neper_fn;
-struct neper_histo_factory;
 struct neper_pq;
 struct neper_stats;
 
@@ -103,7 +102,6 @@ struct thread {
         struct timespec *time_start;
         pthread_mutex_t *time_start_mutex;
         struct rusage *rusage_start;
-        struct neper_histo_factory *histo_factory;
         struct neper_stats *stats;
         struct neper_rusage *rusage;
 	struct io_stats io_stats;

@@ -19,8 +19,6 @@
 
 #include <stdint.h>
 
-struct thread;
-
 /*
  * A simple histogram API for tracking a series of latency measurements:
  *
@@ -31,11 +29,16 @@ struct thread;
  * neper_histo_epoch() perhaps every second or so.
  */
 
-struct neper_histo_factory;
+/* Internally the collector allows 64-bit values in buckets with k_bits
+ * significant bits. 6 gives 1.5% error and about 4K buckets.
+ */
+#define DEFAULT_K_BITS 4
+
+struct thread;
 struct neper_histo;
 
 /* Create a new collector */
-struct neper_histo *neper_histo_new(const struct neper_histo_factory *);
+struct neper_histo *neper_histo_new(const struct thread *t, uint8_t k_bits);
 
 /* Returns the min of the previous sampling epoch. */
 double neper_histo_min(const struct neper_histo *);
@@ -69,16 +72,5 @@ void neper_histo_print(struct neper_histo *);
 
 /* Destroy the object */
 void neper_histo_delete(struct neper_histo *);
-
-/*
- * We use a factory to create histo objects so they can all share one set of
- * common lookup tables, saving a great deal of memory.
- */
-
-void neper_histo_factory_delete(struct neper_histo_factory *);
-
-struct neper_histo_factory *neper_histo_factory_new(const struct thread *,
-                                                int size,
-                                                double growth);
 
 #endif
