@@ -32,7 +32,7 @@
 /* Internally the collector allows 64-bit values in buckets with k_bits
  * significant bits. 6 gives 1.5% error and about 4K buckets.
  */
-#define DEFAULT_K_BITS 4
+#define DEFAULT_K_BITS 6
 
 struct thread;
 struct neper_histo;
