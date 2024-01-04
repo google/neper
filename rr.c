@@ -146,7 +146,7 @@ static struct neper_stat *rr_latency_init(struct flow *f)
 
         struct neper_histo *histo = neper_histo_new(t, DEFAULT_K_BITS);
 
-        size = sizeof(struct rr_snap_opaque) + t->percentiles * sizeof(double);
+        size = sizeof(struct rr_snap_opaque) + t->opts->percentiles.p_count * sizeof(double);
 
         return neper_stat_init(f, histo, size);
 }
@@ -307,13 +307,8 @@ static void rr_snapshot(struct thread *t, struct neper_stat *stat,
         opaque->mean = neper_histo_mean(histo);
         opaque->stddev = neper_histo_stddev(histo);
 
-        if (t->percentiles) {
-                int i, j = 0;
-                for (i = 0; i < PER_INDEX_COUNT; i++)
-                        if (percentiles_chosen(&t->opts->percentiles, i))
-                                opaque->percentile[j++] =
-                                        neper_histo_percent(histo, i);
-        }
+        for (int i = 0; i < t->opts->percentiles.p_count; i++)
+                opaque->percentile[i] = neper_histo_percent(histo, i);
 }
 
 static bool rr_do_compl(struct flow *f,
@@ -480,16 +475,8 @@ static void rr_print_snap(struct thread *t, int flow_index,
                 fprintf(csv, ",%f,%f,%f,%f",
                         rso->min, rso->mean, rso->max, rso->stddev);
 
-                if (t->percentiles) {
-                        const struct options *opts = t->opts;
-                        int i, j = 0;
-
-                        for (i = 0; i < PER_INDEX_COUNT; i++)
-                                if (percentiles_chosen(&opts->percentiles, i))
-                                        fprintf(csv, ",%f",
-                                                rso->percentile[j++]);
-                }
-
+                for (int i = 0; i < t->opts->percentiles.p_count; i++)
+                        fprintf(csv, ",%f", rso->percentile[i]);
                 fprintf(csv, "\n");
         }
 }

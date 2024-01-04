@@ -52,8 +52,8 @@ double neper_histo_mean(const struct neper_histo *);
 /* Returns the stddev of the previous sampling epoch. */
 double neper_histo_stddev(const struct neper_histo *);
 
-/* Returns the percent of the previous sampling epoch. */
-double neper_histo_percent(const struct neper_histo *, int percentage);
+/* Returns the index-th percent of the previous sampling epoch. */
+double neper_histo_percent(const struct neper_histo *, int index);
 
 /* Adds one histogram to the current epoch of another. */
 void neper_histo_add(struct neper_histo *des, const struct neper_histo *src);

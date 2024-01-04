@@ -88,7 +88,7 @@ struct flags_parser *add_flags_rr(struct flags_parser *fp)
         /* Define flags common to all RR and CRR main programs */
         DEFINE_FLAG(fp, int,                 request_size,  1,                       'Q', "Number of bytes in a request from client to server");
         DEFINE_FLAG(fp, int,                 response_size, 1,                       'R', "Number of bytes in a response from server to client");
-        DEFINE_FLAG(fp, struct percentiles,  percentiles,   { .chosen = { false } }, 'p', "Set reported latency percentiles (list)");
+        DEFINE_FLAG(fp, struct percentiles,  percentiles,   {},                      'p', "Set reported latency percentiles (list)");
         DEFINE_FLAG_PARSER(fp,               percentiles, percentiles_parse);
         DEFINE_FLAG_PRINTER(fp,              percentiles, percentiles_print);
         DEFINE_FLAG(fp, int,                 test_length,   10,                      'l', "Test length, >0 seconds, <0 transactions");

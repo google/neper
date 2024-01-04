@@ -23,77 +23,72 @@
 #include "lib.h"
 #include "logging.h"
 
+static int my_dsort(const void *p1, const void *p2)
+{
+        const double a = *(double *)p1, b = *(double *)p2;
+
+        return a < b ? -1 : (a > b ? 1 : 0);
+}
+
 void percentiles_parse(const char *arg, void *out, struct callbacks *cb)
 {
         struct percentiles *p = out;
         char *endptr;
-        long val;
+        int sz = 0;
+        double d;
 
-        while (true) {
+        while (arg) {
                 errno = 0;
-                val = strtol(arg, &endptr, 10);
-                if ((errno == ERANGE && (val == LONG_MAX || val == LONG_MIN)) ||
-                    (errno != 0 && val == 0))
-                        PLOG_FATAL(cb, "strtol");
-                if (endptr == arg)
-                        break;
-                if ((val < 0 || val > 100) && (val != 999) && (val != 9999))
-                        LOG_FATAL(cb, "%ld percentile doesn't exist", val);
-                switch (val) {
-                case 999:
-                        p->chosen[PER_INDEX_99_9] = true;
-                        break;
-                case 9999:
-                        p->chosen[PER_INDEX_99_99] = true;
-                        break;
-                default:
-                        p->chosen[val] = true;
-                        break;
+                d = strtod(arg, &endptr);
+                /* backward compatibility */
+                if (d == 999)
+                        d = 99.9;
+                else if (d == 9999)
+                        d = 99.99;
+                if (errno || d < 0 || d > 100 || endptr == arg)
+                        LOG_FATAL(cb, "invalid -p argument %s", arg);
+
+                if (p->p_count >= sz) {
+                        sz = 2 * sz + 2;
+                        p->p_th = realloc(p->p_th, sz * sizeof(double));
+                        if (!p->p_th)
+                                LOG_FATAL(cb, "cannot allocate %d entries", sz);
                 }
-                LOG_INFO(cb, "%ld percentile is chosen", val);
+                p->p_th[p->p_count++] = d;
+                LOG_INFO(cb, "%g percentile is chosen", d);
                 if (*endptr == '\0')
                         break;
                 arg = endptr + 1;
         }
+        if (!p->p_count)
+                return;
+        qsort(p->p_th, p->p_count, sizeof(double), my_dsort);
+        /* remove duplicates */
+        int i, cur = 0;
+        for (i = 1; i < p->p_count; i++) {
+                if (p->p_th[cur] == p->p_th[i])
+                        LOG_INFO(cb, "remove duplicate percentile %g", p->p_th[i]);
+                else
+                        p->p_th[++cur] = p->p_th[i];
+        }
+        p->p_count = cur;
 }
 
 void percentiles_print(const char *name, const void *var, struct callbacks *cb)
 {
         const struct percentiles *p = var;
-        char buf[10], s[400] = "";
-        int i;
+        char buf, *s;
+        int i, len = 0;
 
-        for (i = 0; i <= 100; i++) {
-                if (p->chosen[i]) {
-                        sprintf(buf, "%d,", i);
-                        strcat(s, buf);
-                }
-        }
-        if (p->chosen[PER_INDEX_99_9])
-                strcat(s, "99.9,");
-        if (p->chosen[PER_INDEX_99_99])
-                strcat(s, "99.99,");
-        if (strlen(s) > 0)
-                s[strlen(s) - 1] = '\0'; /* remove trailing comma */
+        /* first pass, compute length */
+        for (i = 0; i < p->p_count; i++)
+                len += snprintf(&buf, 0, "%g,", p->p_th[i]);
+
+        /* second pass, create string */
+        s = calloc(1, len + 1);
+        len = 0;
+        for (i = 0; i < p->p_count; i++)
+                len += sprintf(s + len, "%g,", p->p_th[i]);
         PRINT(cb, name, "%s", s);
-}
-
-bool percentiles_chosen(const struct percentiles *p, int percent)
-{
-        if (p)
-                return p->chosen[percent];
-
-        return false;
-}
-
-int percentiles_count(const struct percentiles *p)
-{
-        if (p) {
-                int i, sum = 0;
-                for (i = 0; i < PER_INDEX_COUNT; i++)
-                        sum += p->chosen[i] ? 1 : 0;
-                return sum;
-        }
-
-        return 0;
+        free(s);
 }

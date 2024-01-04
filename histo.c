@@ -22,6 +22,7 @@
 
 // use 0.01 us time resolution
 static const int TIME_RESOLUTION = 100 * 1000000;
+static const double TICKS_TO_SEC = 1.0 / TIME_RESOLUTION;
 
 struct neper_histo {
         const struct thread *thread;
@@ -53,8 +54,8 @@ struct neper_histo {
         double one_max;
         double cur_max;
 
-        int all_percent[PER_INDEX_COUNT];  /* % across all completed epochs */
-        int one_percent[PER_INDEX_COUNT];  /* % of the last completed epoch */
+        double *all_p_values;  /* % across all completed epochs */
+        double *one_p_values;  /* % of the last completed epoch */
 
         bool first_all;   /* Is this the first call to all_percent() */
 };
@@ -127,12 +128,9 @@ double neper_histo_stddev(const struct neper_histo *histo)
 
 static void histo_all_finalize(struct neper_histo *impl)
 {
+        const struct percentiles *pc = &impl->thread->opts->percentiles;
         double cent = impl->all_count / 100.0;
-        double nnn  = (impl->all_count * 99.9) / 100.0;
-        double nnnn = (impl->all_count * 99.99) / 100.0;
-        int sub = 0;
-        int p = 1;
-        int i;
+        int sub = 0, v = 0, i;
 
         if (!impl->first_all)
                 return;
@@ -140,96 +138,30 @@ static void histo_all_finalize(struct neper_histo *impl)
 
         for (i = 0; i < impl->num_buckets; i++) {
                 sub += impl->all_buckets[i];
-                while (p < 100 && p * cent <= sub)
-                        impl->all_percent[p++] = lr_bucket_hi(i, impl->k_bits);
-                if (p == 100) {
-                        if (nnn <= sub) {
-                                int c = lr_bucket_hi(i, impl->k_bits);
-                                impl->all_percent[PER_INDEX_99_9] = c;
-                                p++;
-                        }
-                }
-                if (p == 101) {
-                        if (nnnn <= sub) {
-                                int c = lr_bucket_hi(i, impl->k_bits);
-                                impl->all_percent[PER_INDEX_99_99] = c;
-                                p++;
-                        }
-                }
+                while (v < pc->p_count && sub >= pc->p_th[v] * cent)
+                        impl->all_p_values[v++] = lr_bucket_hi(i, impl->k_bits) * TICKS_TO_SEC;
         }
 }
 
 static void histo_one_finalize(struct neper_histo *impl)
 {
+        const struct percentiles *pc = &impl->thread->opts->percentiles;
         double cent = impl->one_count / 100.0;
-        double nnn  = (impl->one_count * 99.9) / 100.0;
-        double nnnn = (impl->one_count * 99.99) / 100.0;
-        int sub = 0;
-        int p = 1;
-        int i;
+        int sub = 0, v = 0, i;
 
         for (i = 0; i < impl->num_buckets; i++) {
                 int n = impl->cur_buckets[i];
                 sub += n;
-                while (p < 100 && p * cent <= sub)
-                        impl->one_percent[p++] = lr_bucket_hi(i, impl->k_bits);
-                if (p == 100) {
-                        if (nnn <= sub) {
-                                int c = lr_bucket_hi(i, impl->k_bits);
-                                impl->one_percent[PER_INDEX_99_9] = c;
-                                p++;
-                        }
-                }
-                if (p == 101) {
-                        if (nnnn <= sub) {
-                                int c = lr_bucket_hi(i, impl->k_bits);
-                                impl->one_percent[PER_INDEX_99_99] = c;
-                                p++;
-                        }
-                }
                 impl->all_buckets[i] += n;
                 impl->cur_buckets[i] = 0;
+                while (v < pc->p_count && sub >= pc->p_th[v] * cent)
+                        impl->one_p_values[v++] = lr_bucket_hi(i, impl->k_bits) * TICKS_TO_SEC;
         }
 }
 
-static double histo_all_percent(struct neper_histo *impl, int percentage)
+double neper_histo_percent(const struct neper_histo *impl, int index)
 {
-        histo_all_finalize(impl);
-
-        switch (percentage) {
-        case 0:
-                return impl->all_min;
-        case 100:
-                return impl->all_max;
-        case 999:
-                return (double)impl->all_percent[PER_INDEX_99_9] /
-                       TIME_RESOLUTION;
-        case 9999:
-                return (double)impl->all_percent[PER_INDEX_99_99] /
-                       TIME_RESOLUTION;
-        default:
-                return (double)impl->all_percent[percentage] /
-                       TIME_RESOLUTION;
-        }
-}
-
-double neper_histo_percent(const struct neper_histo *impl, int percentage)
-{
-        switch (percentage) {
-        case 0:
-                return impl->one_min;
-        case 100:
-                return impl->one_max;
-        case 999:
-                return (double)impl->one_percent[PER_INDEX_99_9] /
-                       TIME_RESOLUTION;
-        case 9999:
-                return (double)impl->one_percent[PER_INDEX_99_99] /
-                       TIME_RESOLUTION;
-        default:
-                return (double)impl->one_percent[percentage] /
-                       TIME_RESOLUTION;
-        }
+        return impl->one_p_values[index];
 }
 
 uint64_t neper_histo_samples(const struct neper_histo *histo)
@@ -293,7 +225,7 @@ void neper_histo_epoch(struct neper_histo *impl)
 
         impl->all_min = MIN(impl->all_min, impl->cur_min);
         impl->one_min = impl->cur_min;
-        impl->cur_min = impl->sample_max_value;;
+        impl->cur_min = impl->sample_max_value;
 
         impl->all_max = MAX(impl->all_max, impl->cur_max);
         impl->one_max = impl->cur_max;
@@ -305,57 +237,55 @@ void neper_histo_epoch(struct neper_histo *impl)
 void neper_histo_print(struct neper_histo *histo)
 {
         const struct thread *t = histo->thread;
-        const struct options *opts = t->opts;
+        const struct percentiles *pc = &t->opts->percentiles;
 
+        histo_all_finalize(histo);
         PRINT(t->cb, "latency_min", "%.9f", histo->all_min);
         PRINT(t->cb, "latency_max", "%.9f", histo->all_max);
         PRINT(t->cb, "latency_mean", "%.9f", histo->all_sum / histo->all_count);
         PRINT(t->cb, "latency_stddev", "%.9f",
               histo_stddev(histo->all_count, histo->all_sum, histo->all_sum2));
 
-        int i;
-        for (i = 0; i < 100; i++)
-                if (percentiles_chosen(&opts->percentiles, i)) {
-                        char key[13];
-                        sprintf(key, "latency_p%d", i);
-                        PRINT(t->cb, key, "%.9f", histo_all_percent(histo, i));
-                }
-        if (percentiles_chosen(&opts->percentiles, PER_INDEX_99_9))
-          PRINT(t->cb, "latency_p99.9", "%.9f",
-                histo_all_percent(histo, PER_INDEX_99_9));
-        if (percentiles_chosen(&opts->percentiles, PER_INDEX_99_99))
-          PRINT(t->cb, "latency_p99.99", "%.9f",
-                histo_all_percent(histo, PER_INDEX_99_99));
+        for (int i = 0; i < pc->p_count; i++) {
+                char key[32];
+                sprintf(key, "latency_p%g", pc->p_th[i]);
+                PRINT(t->cb, key, "%.9f", histo->all_p_values[i]);
+        }
 }
 
 void neper_histo_delete(struct neper_histo *impl)
 {
-        if (impl) {
-                free(impl->all_buckets);
-                free(impl->cur_buckets);
+        if (impl)
                 free(impl);
-        }
 }
 
 struct neper_histo *neper_histo_new(const struct thread *t, uint8_t k_bits)
 {
-
-        struct neper_histo *impl = calloc(1, sizeof(*impl));
+        const uint16_t p_count = t->opts->percentiles.p_count;
+        struct neper_histo *ret, histo = {};
+        size_t memsize = sizeof(histo);
 
         if (k_bits > 10)
                 k_bits = 10;
-        impl->thread      = t;
-        impl->k_bits      = k_bits;
-        impl->num_buckets = 65 * (1 << k_bits);
-        impl->sample_max_value = ~0ul;
+        histo.thread      = t;
+        histo.k_bits      = k_bits;
+        histo.num_buckets = 65 * (1 << k_bits);
+        histo.sample_max_value = ~0ul;
+        histo.first_all = true;
 
-        impl->all_buckets = calloc(impl->num_buckets, sizeof(uint64_t));
-        impl->cur_buckets = calloc(impl->num_buckets, sizeof(uint64_t));
+        /* Allocate memory in one chunk */
+        memsize += histo.num_buckets * 2 * sizeof(histo.all_buckets[0]);
+        memsize += p_count * 2 * sizeof(histo.all_p_values[0]);
 
-        impl->all_min = impl->sample_max_value;
-        impl->cur_min = impl->sample_max_value;
+        ret = calloc(1, memsize);
+        *ret = histo;
+        ret->all_buckets = (void *)(ret + 1);
+        ret->cur_buckets = ret->all_buckets + ret->num_buckets;
+        ret->all_p_values = (void *)(ret->cur_buckets + ret->num_buckets);
+        ret->one_p_values = ret->all_p_values + p_count;
 
-        impl->first_all = true;
+        ret->all_min = ret->sample_max_value;
+        ret->cur_min = ret->sample_max_value;
 
-        return impl;
+        return ret;
 }

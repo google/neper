@@ -17,22 +17,14 @@
 #ifndef THIRD_PARTY_NEPER_PERCENTILES_H
 #define THIRD_PARTY_NEPER_PERCENTILES_H
 
-#include <stdbool.h>
-
-#define PER_INDEX_99_9	101
-#define PER_INDEX_99_99	102
-#define PER_INDEX_COUNT	103
-
 struct callbacks;
 
 struct percentiles {
-        bool chosen[PER_INDEX_COUNT];
+        int p_count;
+        double *p_th; /* indexes */
 };
 
 void percentiles_parse(const char *arg, void *out, struct callbacks *);
 void percentiles_print(const char *name, const void *var, struct callbacks *);
-
-bool percentiles_chosen(const struct percentiles *, int percent);
-int percentiles_count(const struct percentiles *);
 
 #endif

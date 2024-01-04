@@ -363,8 +363,6 @@ void start_worker_threads(struct options *opts, struct callbacks *cb,
         allowed_cores = get_cpuset(cpuset, cb);
         LOG_INFO(cb, "Number of allowed_cores = %d", allowed_cores);
 
-        int percentiles = percentiles_count(&opts->percentiles);
-
 #if defined(WITH_TCPDEVMEM_CUDA) || defined(WITH_TCPDEVMEM_UDMABUF)
         /* perform driver reset (on host) in anticipation of TCPDEVMEM run */
         if (opts->tcpd_nic_pci_addr && !opts->client) {
@@ -388,7 +386,6 @@ void start_worker_threads(struct options *opts, struct callbacks *cb,
                 t[i].flow_first = first_flow_in_thread(&t[i]);
                 t[i].flow_limit = flows_in_thread(&t[i]);
                 t[i].flow_count = 0;
-                t[i].percentiles = percentiles;
                 t[i].local_hosts = parse_local_hosts(opts, t[i].num_local_hosts,
                                                      cb);
                 t[i].ready = ready;
