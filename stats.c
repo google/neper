@@ -201,7 +201,7 @@ static void stat_delete(struct neper_stat *stat)
 
         if (impl) {
                 if (impl->histo)
-                        impl->histo->fini(impl->histo);
+                        neper_histo_delete(impl->histo);
                 free(impl->snaps);   /* TODO: Add a destructor */
                 free(impl);
         }

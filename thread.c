@@ -47,7 +47,7 @@ static int
 fn_count_events(struct neper_stat *stat, void *ptr)
 {
         const struct neper_histo *histo = stat->histo(stat);
-        return histo->events(histo);
+        return neper_histo_samples(histo);
 }
 
 static int
@@ -392,7 +392,7 @@ void start_worker_threads(struct options *opts, struct callbacks *cb,
                 t[i].stats = neper_stats_init(cb);
                 t[i].rusage = neper_rusage(opts->interval);
                 t[i].data_pending = data_pending;
-                t[i].histo_factory = neper_histo_factory(&t[i],
+                t[i].histo_factory = neper_histo_factory_new(&t[i],
                                                          NEPER_HISTO_SIZE,
                                                          NEPER_HISTO_GROWTH);
                 t[i].loop_inited = loop_inited;
