@@ -43,23 +43,12 @@ FILE *print_header(const char *path, const char *things, const char *nl,
         return csv;
 }
 
-void print_latency_header(FILE *csv, const struct percentiles *percentiles)
+void print_latency_header(FILE *csv, const struct percentiles *pc)
 {
         fprintf(csv, ",latency_min,latency_mean,latency_max,latency_stddev");
 
-        if (percentiles) {
-                int i;
-                for (i = 0; i < 100; i++)
-                        if (percentiles_chosen(percentiles, i))
-                                fprintf(csv, ",latency_p%d", i);
-                if (percentiles_chosen(percentiles, PER_INDEX_99_9))
-                        fprintf(csv, ",latency_p99_9");
-                if (percentiles_chosen(percentiles, PER_INDEX_99_99))
-                        fprintf(csv, ",latency_p99_99");
-                if (percentiles_chosen(percentiles, 100))
-                        fprintf(csv, ",latency_p100");
-        }
-
+        for (int i = 0; i < pc->p_count; i++)
+                fprintf(csv, ",latency_p%g", pc->p_th[i]);
         fprintf(csv, "\n");
 }
 
