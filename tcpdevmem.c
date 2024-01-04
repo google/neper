@@ -9,7 +9,7 @@
 #include "tcpdevmem.h"
 #include "thread.h"
 
-#define TEST_PREFIX "ncdevmem_common"
+#define TEST_PREFIX "ncdevmem"
 
 int install_flow_steering(const struct options *opts, intptr_t buf,
 			  struct thread *t)
