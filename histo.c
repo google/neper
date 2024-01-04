@@ -29,6 +29,7 @@ struct neper_histo {
 
         uint32_t num_buckets;  /* # of buckets allocated */
         uint8_t k_bits; /* resolution */
+        uint16_t p_count; /* percentiles, cached for convenience */
         uint64_t sample_max_value;
 
         uint64_t *all_buckets;
@@ -54,6 +55,14 @@ struct neper_histo {
         double one_max;
         double cur_max;
 
+        uint32_t all_max_index;
+        uint32_t one_max_index;
+        uint32_t cur_max_index;
+
+        uint32_t all_min_index;
+        uint32_t one_min_index;
+        uint32_t cur_min_index;
+
         double *all_p_values;  /* % across all completed epochs */
         double *one_p_values;  /* % of the last completed epoch */
 
@@ -63,7 +72,6 @@ struct neper_histo {
 /* Conversion of a 64-bit value to an approximately logarithmic index
  * with k bits of resolution.
  * lr_bucket(n, k) computes the log2, followed by the k next significant bits.
- *
  * lr_bucket_lo(b, k) returns the lower bound of bucket b.
  * Translate the index into the starting value for the corresponding interval.
  * Each power of 2 is mapped into N = 2**k intervals, each of size
@@ -136,7 +144,7 @@ static void histo_all_finalize(struct neper_histo *impl)
                 return;
         impl->first_all = false;
 
-        for (i = 0; i < impl->num_buckets; i++) {
+        for (i = impl->all_min_index; i <= impl->all_max_index; i++) {
                 sub += impl->all_buckets[i];
                 while (v < pc->p_count && sub >= pc->p_th[v] * cent)
                         impl->all_p_values[v++] = lr_bucket_hi(i, impl->k_bits) * TICKS_TO_SEC;
@@ -149,7 +157,7 @@ static void histo_one_finalize(struct neper_histo *impl)
         double cent = impl->one_count / 100.0;
         int sub = 0, v = 0, i;
 
-        for (i = 0; i < impl->num_buckets; i++) {
+        for (i = impl->one_min_index; i <= impl->one_max_index; i++) {
                 int n = impl->cur_buckets[i];
                 sub += n;
                 impl->all_buckets[i] += n;
@@ -177,9 +185,11 @@ void neper_histo_add(struct neper_histo *desi, const struct neper_histo *srci)
 
         desi->cur_min = MIN(desi->cur_min, srci->all_min);
         desi->cur_max = MAX(desi->cur_max, srci->all_max);
+        desi->cur_min_index = MIN(desi->cur_min_index, srci->all_min_index);
+        desi->cur_max_index = MAX(desi->cur_max_index, srci->all_max_index);
 
         int i;
-        for (i = 0; i < desi->num_buckets; i++)
+        for (i = srci->all_min_index; i <= srci->all_max_index; i++)
                 desi->cur_buckets[i] += srci->all_buckets[i];
 }
 
@@ -205,7 +215,11 @@ void neper_histo_event(struct neper_histo *impl, double delta_s)
                  */
                 return;
         }
+        if (!impl->p_count)
+                return;
         i = lr_bucket((uint64_t)delta_s, impl->k_bits);
+        impl->cur_min_index = MIN(impl->cur_min_index, i);
+        impl->cur_max_index = MAX(impl->cur_max_index, i);
         impl->cur_buckets[i]++;
 }
 
@@ -230,6 +244,14 @@ void neper_histo_epoch(struct neper_histo *impl)
         impl->all_max = MAX(impl->all_max, impl->cur_max);
         impl->one_max = impl->cur_max;
         impl->cur_max = 0;
+
+        impl->all_min_index = MIN(impl->all_min_index, impl->cur_min_index);
+        impl->one_min_index = impl->cur_min_index;
+        impl->cur_min_index = impl->num_buckets - 1;
+
+        impl->all_max_index = MAX(impl->all_max_index, impl->cur_max_index);
+        impl->one_max_index = impl->cur_max_index;
+        impl->cur_max_index = 0;
 
         histo_one_finalize(impl);
 }
@@ -261,7 +283,6 @@ void neper_histo_delete(struct neper_histo *impl)
 
 struct neper_histo *neper_histo_new(const struct thread *t, uint8_t k_bits)
 {
-        const uint16_t p_count = t->opts->percentiles.p_count;
         struct neper_histo *ret, histo = {};
         size_t memsize = sizeof(histo);
 
@@ -272,20 +293,23 @@ struct neper_histo *neper_histo_new(const struct thread *t, uint8_t k_bits)
         histo.num_buckets = 65 * (1 << k_bits);
         histo.sample_max_value = ~0ul;
         histo.first_all = true;
+        histo.p_count = t->opts->percentiles.p_count;
 
         /* Allocate memory in one chunk */
         memsize += histo.num_buckets * 2 * sizeof(histo.all_buckets[0]);
-        memsize += p_count * 2 * sizeof(histo.all_p_values[0]);
+        memsize += histo.p_count * 2 * sizeof(histo.all_p_values[0]);
 
         ret = calloc(1, memsize);
         *ret = histo;
         ret->all_buckets = (void *)(ret + 1);
         ret->cur_buckets = ret->all_buckets + ret->num_buckets;
         ret->all_p_values = (void *)(ret->cur_buckets + ret->num_buckets);
-        ret->one_p_values = ret->all_p_values + p_count;
+        ret->one_p_values = ret->all_p_values + ret->p_count;
 
         ret->all_min = ret->sample_max_value;
         ret->cur_min = ret->sample_max_value;
+        ret->all_min_index = ret->num_buckets - 1;
+        ret->cur_min_index = ret->num_buckets - 1;
 
         return ret;
 }
