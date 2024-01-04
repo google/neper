@@ -39,11 +39,6 @@
 #include <libnuma/numaint.h>
 #endif
 
-// max value = 1.0025^8192 = 764278329
-// If TIME_RESOLUTION is 0.01 us, max latency in histogram = 7.642783298s
-#define NEPER_HISTO_SIZE   8192  /* # of buckets in the histogram */
-#define NEPER_HISTO_GROWTH 1.0025 /* bucket growth rate */
-
 /* Callbacks for the neper_stats sumforeach() function. */
 
 static int
@@ -403,9 +398,6 @@ void start_worker_threads(struct options *opts, struct callbacks *cb,
                 t[i].stats = neper_stats_init(cb);
                 t[i].rusage = neper_rusage(opts->interval);
                 t[i].data_pending = data_pending;
-                t[i].histo_factory = neper_histo_factory_new(&t[i],
-                                                         NEPER_HISTO_SIZE,
-                                                         NEPER_HISTO_GROWTH);
                 t[i].loop_inited = loop_inited;
                 t[i].loop_init_c = loop_init_c;
                 t[i].loop_init_m = loop_init_m;
