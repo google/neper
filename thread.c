@@ -52,7 +52,7 @@ static int
 fn_count_snaps(struct neper_stat *stat, void *ptr)
 {
         const struct neper_snaps *snaps = stat->snaps(stat);
-        return snaps->count(snaps);
+        return neper_snaps_count(snaps);
 }
 
 static int
