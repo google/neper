@@ -46,7 +46,6 @@ lib := \
 	histo.o \
 	logging.o \
 	loop.o \
-	numlist.o \
 	or_die.o \
 	parse.o \
 	percentiles.o \
