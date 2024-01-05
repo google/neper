@@ -52,13 +52,12 @@ void neper_snap_print(const struct neper_snap *, FILE *, double raw_thruput,
  * iter_done() Returns true once the end of the iterator has been reached.
  */
 
-struct neper_snaps {
-        struct neper_snap *(*add)(struct neper_snaps *, const struct timespec *,
-                                  uint64_t);
-        int (*count)(const struct neper_snaps *);
-        const struct neper_snap *(*iter_next)(struct neper_snaps *);
-        bool (*iter_done)(const struct neper_snaps *);
-};
+struct neper_snaps;
+
+struct neper_snap *neper_snaps_add(struct neper_snaps *, const struct timespec *, uint64_t);
+int neper_snaps_count(const struct neper_snaps *);
+const struct neper_snap *neper_snaps_iter_next(struct neper_snaps *);
+bool neper_snaps_iter_done(const struct neper_snaps *);
 
 double neper_snaps_cmp(const struct neper_snaps *, const struct neper_snaps *);
 

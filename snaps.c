@@ -19,15 +19,13 @@
 #include "print.h"
 #include "rusage.h"
 
-struct snaps_impl {
-        struct neper_snaps snaps;
-
+struct neper_snaps {
         struct neper_rusage *rusage;
         int total;   /* # of snap structs allocated */
         int count;   /* # of populated snap structs */
         int iter;    /* iterator bookmark */
         int extent;  /* extended size of the snap struct */
-        void *ptr;   /* storage */
+        char *ptr;   /* storage */
 };
 
 /*
@@ -50,11 +48,8 @@ void neper_snap_print(const struct neper_snap *snap, FILE *csv,
         print_rusage(csv, snap->rusage, nl);
 }
 
-static struct neper_snap *snaps_get(const struct neper_snaps *snaps, int i)
+static struct neper_snap *snaps_get(const struct neper_snaps *impl, int i)
 {
-        struct snaps_impl *impl = (void *)snaps;
-        char *ptr = impl->ptr;
-
         if (i < 0)
                 return NULL;
         if (i >= impl->total) {
@@ -66,74 +61,57 @@ static struct neper_snap *snaps_get(const struct neper_snaps *snaps, int i)
 
                 if (!reported) {
                         fprintf(stderr, "Test longer than expected (%d), "
-				"use -l <duration> to extend\n",
+                                "use -l <duration> to extend\n",
                                 i + reported++);
-                }
-                return (void *)(ptr + impl->total * impl->extent);
+		}
+                i = impl->total; /* point to spare element */
         }
 
-        return (void *)(ptr + i * impl->extent);
+        return (void *)(impl->ptr + i * impl->extent);
 }
 
 /* Compare two containers by comparing the current iterator objects for each. */
 
-double neper_snaps_cmp(const struct neper_snaps *aptr,
-                       const struct neper_snaps *bptr)
+double neper_snaps_cmp(const struct neper_snaps *a,
+                       const struct neper_snaps *b)
 {
-        const struct snaps_impl *a = (void *)aptr;
-        const struct snaps_impl *b = (void *)bptr;
-        const struct neper_snap *sa = snaps_get(&a->snaps, a->iter);
-        const struct neper_snap *sb = snaps_get(&b->snaps, b->iter);
+        const struct neper_snap *sa = snaps_get(a, a->iter);
+        const struct neper_snap *sb = snaps_get(b, b->iter);
 
         return neper_snap_cmp(sa, sb);
 }
 
-static struct neper_snap *snaps_add(struct neper_snaps *snaps,
-                                    const struct timespec *now, uint64_t things)
+struct neper_snap *neper_snaps_add(struct neper_snaps *snaps,
+                                   const struct timespec *now, uint64_t things)
 {
-        struct snaps_impl *impl = (void *)snaps;
-        struct neper_snap *snap = snaps_get(snaps, impl->count++);
+        struct neper_snap *snap = snaps_get(snaps, snaps->count++);
 
         snap->timespec = *now;
-        snap->rusage   = impl->rusage->get(impl->rusage, now);
+        snap->rusage   = snaps->rusage->get(snaps->rusage, now);
         snap->things   = things;
 
         return snap;
 }
 
-static int snaps_count(const struct neper_snaps *snaps)
+int neper_snaps_count(const struct neper_snaps *snaps)
 {
-        const struct snaps_impl *impl = (void *)snaps;
-
-        return impl->count;
+        return snaps->count;
 }
 
-static const struct neper_snap *snaps_iter_next(struct neper_snaps *snaps)
+const struct neper_snap *neper_snaps_iter_next(struct neper_snaps *snaps)
 {
-        struct snaps_impl *impl = (void *)snaps;
-
-        int i = impl->iter++;
-        return (i < impl->count) ? snaps_get(snaps, i) : NULL;
+        int i = snaps->iter++;
+        return (i < snaps->count) ? snaps_get(snaps, i) : NULL;
 }
 
-static bool snaps_iter_done(const struct neper_snaps *snaps)
+bool neper_snaps_iter_done(const struct neper_snaps *snaps)
 {
-        const struct snaps_impl *impl = (void *)snaps;
-
-        return (impl->iter >= impl->count);
+        return snaps->iter >= snaps->count;
 }
 
 struct neper_snaps *neper_snaps_init(struct neper_rusage *rusage,
                                      int total, int extra)
 {
-        struct snaps_impl *impl = calloc(1, sizeof(struct snaps_impl));
-        struct neper_snaps *snaps = &impl->snaps;
-
-        impl->rusage = rusage;
-        impl->total  = total;
-        impl->count  = 0;
-        impl->iter   = 0;
-        impl->extent = sizeof(struct neper_snap) + extra;
         /*
          * Allocate memory for all the samples at startup, based on the
          * known values for total_length and interval. The actual test
@@ -144,12 +122,14 @@ struct neper_snaps *neper_snaps_init(struct neper_rusage *rusage,
          * See snaps_get().
          * TODO(lrizzo) Design a proper mechanism for dynamic allocation.
          */
-        impl->ptr    = calloc(total + 1, impl->extent);
+        const int extent = sizeof(struct neper_snap) + extra;
+        const int size = sizeof(struct neper_snaps) + extent * (total + 1);
+        struct neper_snaps *snaps = calloc(1, size);
 
-        snaps->add   = snaps_add;
-        snaps->count = snaps_count;
-        snaps->iter_next = snaps_iter_next;
-        snaps->iter_done = snaps_iter_done;
+        snaps->rusage = rusage;
+        snaps->total  = total;
+        snaps->extent = extent;
+        snaps->ptr    = (char *)(snaps + 1);
 
         return snaps;
 }
