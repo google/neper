@@ -122,3 +122,9 @@ binaries: tcp_rr tcp_stream tcp_crr udp_rr udp_stream psp_stream psp_crr psp_rr
 
 clean:
 	rm -f *.o tcp_rr tcp_stream tcp_crr udp_rr udp_stream psp_stream psp_crr psp_rr
+
+IMAGE ?= neper
+TAG ?= $(shell git describe --tags --always --dirty)
+
+image:
+	docker build --tag ${IMAGE}:${TAG} .
