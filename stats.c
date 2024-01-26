@@ -93,13 +93,13 @@ static void stat_event(struct thread *t, struct neper_stat *stat, int things,
 
         impl->things += things;
 
-        int i = snaps->count(snaps);
+        int i = neper_snaps_count(snaps);
 
         double threshold = t->opts->interval * (i + 1);
 
         /* Always record the first event, to capture the start time. */
         if (elapsed >= threshold || !i || force) {
-                struct neper_snap *snap = snaps->add(snaps, &now, impl->things);
+                struct neper_snap *snap = neper_snaps_add(snaps, &now, impl->things);
 
                 if (fn)
                         fn(t, stat, snap);
@@ -125,7 +125,7 @@ struct neper_coef *neper_stat_print(struct thread *ts, FILE *csv,
         while ((stat = pq->deq(pq))) {
                 struct stat_impl *impl = (void *)stat;
                 struct neper_snaps *snaps = impl->snaps;
-                const struct neper_snap *snap = snaps->iter_next(snaps);
+                const struct neper_snap *snap = neper_snaps_iter_next(snaps);
 
                 current_total += snap->things - impl->scratch;
                 impl->scratch = snap->things;
@@ -157,7 +157,7 @@ struct neper_coef *neper_stat_print(struct thread *ts, FILE *csv,
 
                 coef->event(coef, &snap->timespec, current_total);
 
-                if (!snaps->iter_done(snaps))
+                if (!neper_snaps_iter_done(snaps))
                         pq->enq(pq, stat);
         }
 
@@ -201,7 +201,7 @@ static void stat_delete(struct neper_stat *stat)
 
         if (impl) {
                 if (impl->histo)
-                        impl->histo->fini(impl->histo);
+                        neper_histo_delete(impl->histo);
                 free(impl->snaps);   /* TODO: Add a destructor */
                 free(impl);
         }
@@ -221,7 +221,7 @@ static int fn_snaps(struct neper_stat *stat, void *unused)
         struct stat_impl *impl = (void *)stat;
         const struct neper_snaps *snaps = impl->snaps;
 
-        return snaps->count(snaps);
+        return neper_snaps_count(snaps);
 }
 
 static void stats_container_insert(struct neper_stats *stats,

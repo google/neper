@@ -24,7 +24,6 @@
 
 struct addrinfo;
 struct neper_fn;
-struct neper_histo_factory;
 struct neper_pq;
 struct neper_stats;
 
@@ -93,7 +92,6 @@ struct thread {
         int flow_first;               /* global index of thread's first flow */
         int flow_limit;               /* number of flows to create on thread */
         int flow_count;               /* number of flows created on thread */
-        int percentiles;              /* number of requested percentiles */
         int stop;
         void *f_mbuf;                 /* replaces per-flow buffers */
         pthread_barrier_t *ready;
@@ -103,7 +101,6 @@ struct thread {
         struct timespec *time_start;
         pthread_mutex_t *time_start_mutex;
         struct rusage *rusage_start;
-        struct neper_histo_factory *histo_factory;
         struct neper_stats *stats;
         struct neper_rusage *rusage;
 	struct io_stats io_stats;

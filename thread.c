@@ -36,25 +36,20 @@
 #include <libnuma/numaint.h>
 #endif
 
-// max value = 1.0025^8192 = 764278329
-// If TIME_RESOLUTION is 0.01 us, max latency in histogram = 7.642783298s
-#define NEPER_HISTO_SIZE   8192  /* # of buckets in the histogram */
-#define NEPER_HISTO_GROWTH 1.0025 /* bucket growth rate */
-
 /* Callbacks for the neper_stats sumforeach() function. */
 
 static int
 fn_count_events(struct neper_stat *stat, void *ptr)
 {
         const struct neper_histo *histo = stat->histo(stat);
-        return histo->events(histo);
+        return neper_histo_samples(histo);
 }
 
 static int
 fn_count_snaps(struct neper_stat *stat, void *ptr)
 {
         const struct neper_snaps *snaps = stat->snaps(stat);
-        return snaps->count(snaps);
+        return neper_snaps_count(snaps);
 }
 
 static int
@@ -365,8 +360,6 @@ void start_worker_threads(struct options *opts, struct callbacks *cb,
         allowed_cores = get_cpuset(cpuset, cb);
         LOG_INFO(cb, "Number of allowed_cores = %d", allowed_cores);
 
-        int percentiles = percentiles_count(&opts->percentiles);
-
         for (i = 0; i < opts->num_threads; i++) {
                 t[i].index = i;
                 t[i].fn = fn;
@@ -382,7 +375,6 @@ void start_worker_threads(struct options *opts, struct callbacks *cb,
                 t[i].flow_first = first_flow_in_thread(&t[i]);
                 t[i].flow_limit = flows_in_thread(&t[i]);
                 t[i].flow_count = 0;
-                t[i].percentiles = percentiles;
                 t[i].local_hosts = parse_local_hosts(opts, t[i].num_local_hosts,
                                                      cb);
                 t[i].ready = ready;
@@ -392,9 +384,6 @@ void start_worker_threads(struct options *opts, struct callbacks *cb,
                 t[i].stats = neper_stats_init(cb);
                 t[i].rusage = neper_rusage(opts->interval);
                 t[i].data_pending = data_pending;
-                t[i].histo_factory = neper_histo_factory(&t[i],
-                                                         NEPER_HISTO_SIZE,
-                                                         NEPER_HISTO_GROWTH);
                 t[i].loop_inited = loop_inited;
                 t[i].loop_init_c = loop_init_c;
                 t[i].loop_init_m = loop_init_m;

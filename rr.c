@@ -39,8 +39,6 @@
 
 #define NEPER_EPOLL_MASK (EPOLLHUP | EPOLLRDHUP | EPOLLERR)
 
-static const int MILLION = 1000000;
-
 typedef ssize_t (*rr_send_t)(struct flow *, const char *, size_t, int);
 typedef ssize_t (*rr_recv_t)(struct flow *, char *, size_t);
 
@@ -146,9 +144,9 @@ static struct neper_stat *rr_latency_init(struct flow *f)
         if (t->opts->nostats)
                 return NULL;
 
-        struct neper_histo *histo = t->histo_factory->create(t->histo_factory);
+        struct neper_histo *histo = neper_histo_new(t, DEFAULT_K_BITS);
 
-        size = sizeof(struct rr_snap_opaque) + t->percentiles * sizeof(double);
+        size = sizeof(struct rr_snap_opaque) + t->opts->percentiles.p_count * sizeof(double);
 
         return neper_stat_init(f, histo, size);
 }
@@ -300,22 +298,17 @@ static void rr_snapshot(struct thread *t, struct neper_stat *stat,
 {
         struct neper_histo *histo = stat->histo(stat);
 
-        histo->epoch(histo);
+        neper_histo_epoch(histo);
 
         struct rr_snap_opaque *opaque = (void *)&snap->opaque;
 
-        opaque->min = histo->min(histo);
-        opaque->max = histo->max(histo);
-        opaque->mean = histo->mean(histo);
-        opaque->stddev = histo->stddev(histo);
+        opaque->min = neper_histo_min(histo);
+        opaque->max = neper_histo_max(histo);
+        opaque->mean = neper_histo_mean(histo);
+        opaque->stddev = neper_histo_stddev(histo);
 
-        if (t->percentiles) {
-                int i, j = 0;
-                for (i = 0; i < PER_INDEX_COUNT; i++)
-                        if (percentiles_chosen(&t->opts->percentiles, i))
-                                opaque->percentile[j++] =
-                                        histo->percent(histo, i);
-        }
+        for (int i = 0; i < t->opts->percentiles.p_count; i++)
+                opaque->percentile[i] = neper_histo_percent(histo, i);
 }
 
 static bool rr_do_compl(struct flow *f,
@@ -328,7 +321,7 @@ static bool rr_do_compl(struct flow *f,
 
         struct neper_stat *stat = flow_stat(f);
         struct neper_histo *histo = stat->histo(stat);
-        histo->event(histo, elapsed);
+        neper_histo_event(histo, elapsed);
 
         if (t->data_pending) {
                 /* data vs time mode, last rr? */
@@ -413,7 +406,7 @@ static void rr_server_state_2(struct flow *f, uint32_t events)
         if (rr_do_send(f, events, rr->rr_send)) {
                 if (stat) {
                         /* rr server has no meaningful latency to measure. */
-                        histo->event(histo, 0.0);
+                        neper_histo_event(histo, 0.0);
                         stat->event(t, stat, 1, false, rr_snapshot);
                 }
                 flow_mod(f, rr_server_state_0, EPOLLIN, false);
@@ -480,19 +473,10 @@ static void rr_print_snap(struct thread *t, int flow_index,
                 const struct rr_snap_opaque *rso = (void *)&snap->opaque;
 
                 fprintf(csv, ",%f,%f,%f,%f",
-                        rso->min / MILLION, rso->mean / MILLION,
-                        rso->max / MILLION, rso->stddev / MILLION);
+                        rso->min, rso->mean, rso->max, rso->stddev);
 
-                if (t->percentiles) {
-                        const struct options *opts = t->opts;
-                        int i, j = 0;
-
-                        for (i = 0; i < PER_INDEX_COUNT; i++)
-                                if (percentiles_chosen(&opts->percentiles, i))
-                                        fprintf(csv, ",%f",
-                                                rso->percentile[j++] / MILLION);
-                }
-
+                for (int i = 0; i < t->opts->percentiles.p_count; i++)
+                        fprintf(csv, ",%f", rso->percentile[i]);
                 fprintf(csv, "\n");
         }
 }
@@ -502,7 +486,7 @@ fn_add(struct neper_stat *stat, void *ptr)
 {
         struct neper_histo *src = stat->histo(stat);
         struct neper_histo *des = ptr;
-        des->add(des, src);
+        neper_histo_add(des, src);
         return 0;
 }
 
@@ -520,13 +504,12 @@ int rr_report_stats(struct thread *tinfo)
         int num_events = thread_stats_events(tinfo);
         PRINT(cb, "num_transactions", "%d", num_events);
 
-        struct neper_histo *sum =
-                tinfo[0].histo_factory->create(tinfo[0].histo_factory);
+        struct neper_histo *sum = neper_histo_new(tinfo, DEFAULT_K_BITS);
         for (i = 0; i < opts->num_threads; i++)
                 tinfo[i].stats->sumforeach(tinfo[i].stats, fn_add, sum);
-        sum->epoch(sum);
-        sum->print(sum);
-        sum->fini(sum);
+        neper_histo_epoch(sum);
+        neper_histo_print(sum);
+        neper_histo_delete(sum);
 
         if (path) {
                 csv = print_header(path, "transactions,transactions/s",

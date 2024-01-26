@@ -19,59 +19,58 @@
 
 #include <stdint.h>
 
-struct thread;
-
 /*
  * A simple histogram API for tracking a series of latency measurements:
- * 
- * min()         Returns the min of the previous sampling epoch.
- * max()         Returns the max of the previous sampling epoch.
- * mean()        Returns the mean of the previous sampling epoch.
- * stddev()      Returns the stddev of the previous sampling epoch.
- * percent()     Returns the percent of the previous sampling epoch.
- * add()         Adds one histogram to the current epoch of another.
- * event()       Adds a new event to the current sampling epoch.
- * events()      Returns the event total across all sampling epochs.
- * epoch()       Commits the current sample set and begins a new one.
- * print()       Prints the results.
- * fini()        Deallocates the object.
  *
  * An 'event' is a single measurement.
  * An 'epoch' is all events collected within some time interval.
  *
- * So, typical usage is to call histo->event() many times and histo->epoch()
- * perhaps every second or so.
+ * Typical usage is to call neper_histo_event() many times and
+ * neper_histo_epoch() perhaps every second or so.
  */
 
-struct neper_histo {
-        uint64_t (*events)(const struct neper_histo *);
-
-        double (*min)(const struct neper_histo *);
-        double (*max)(const struct neper_histo *);
-        double (*mean)(const struct neper_histo *);
-        double (*stddev)(const struct neper_histo *);
-        double (*percent)(const struct neper_histo *, int percentage);
-
-        void (*add)(struct neper_histo *des, const struct neper_histo *src);
-
-        void (*event)(struct neper_histo *, double delta_s);
-        void (*epoch)(struct neper_histo *);
-        void (*print)(struct neper_histo *);
-        void (*fini)(struct neper_histo *);
-};
-
-/*
- * We use a factory to create histo objects so they can all share one set of
- * common lookup tables, saving a great deal of memory.
+/* Internally the collector allows 64-bit values in buckets with k_bits
+ * significant bits. 6 gives 1.5% error and about 4K buckets.
  */
+#define DEFAULT_K_BITS 6
 
-struct neper_histo_factory {
-        struct neper_histo *(*create)(const struct neper_histo_factory *);
-        void (*fini)(struct neper_histo_factory *);
-};
+struct thread;
+struct neper_histo;
 
-struct neper_histo_factory *neper_histo_factory(const struct thread *,
-                                                int size,
-                                                double growth);
+/* Create a new collector */
+struct neper_histo *neper_histo_new(const struct thread *t, uint8_t k_bits);
+
+/* Returns the min of the previous sampling epoch. */
+double neper_histo_min(const struct neper_histo *);
+
+/* Returns the max of the previous sampling epoch. */
+double neper_histo_max(const struct neper_histo *);
+
+/* Returns the mean of the previous sampling epoch. */
+double neper_histo_mean(const struct neper_histo *);
+
+/* Returns the stddev of the previous sampling epoch. */
+double neper_histo_stddev(const struct neper_histo *);
+
+/* Returns the index-th percent of the previous sampling epoch. */
+double neper_histo_percent(const struct neper_histo *, int index);
+
+/* Adds one histogram to the current epoch of another. */
+void neper_histo_add(struct neper_histo *des, const struct neper_histo *src);
+
+/* Adds a new event to the current sampling epoch. */
+void neper_histo_event(struct neper_histo *, double delta_s);
+
+/* Returns the event total across all sampling epochs. */
+uint64_t neper_histo_samples(const struct neper_histo *);
+
+/* Commits the current sample set and begins a new one. */
+void neper_histo_epoch(struct neper_histo *);
+
+/* Prints the results */
+void neper_histo_print(struct neper_histo *);
+
+/* Destroy the object */
+void neper_histo_delete(struct neper_histo *);
 
 #endif
