@@ -556,6 +556,10 @@ int run_main_thread(struct options *opts, struct callbacks *cb,
         cp = control_plane_create(opts, cb, data_pending, fn);
         control_plane_start(cp, &ai);
 
+        /* if nonzero, make the client wait before the threads are started. */
+        if (opts->client)
+                sleep(opts->wait_start);
+
         /* start threads *after* control plane is up, to reuse addrinfo. */
         reset_port(ai, atoi(opts->port), cb);
         ts = calloc(opts->num_threads, sizeof(struct thread));

@@ -56,6 +56,7 @@ struct flags_parser *add_flags_common(struct flags_parser *fp)
         DEFINE_FLAG_PARSER(fp,        all_samples, parse_all_samples);
         DEFINE_FLAG(fp, bool,         time_wait,     false,    0,  "Do not set SO_LINGER 0. Close gracefully. Active peer will enter TIME_WAIT state");
         DEFINE_FLAG(fp, unsigned long, iostat_ms,    0,        0,  "Print io stats snapshot every this many ms");
+        DEFINE_FLAG(fp, unsigned long, wait_start,   0,        0,  "Wait this many seconds before starting any data flows.");
 
         /* Return the updated fp */
         return (fp);
