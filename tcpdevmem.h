@@ -9,6 +9,7 @@
 					 * them as cmsg instead */
 #endif
 
+int driver_reset(const struct options *opts);
 int install_flow_steering(const struct options *opts, intptr_t buf,
 			  struct thread *t);
 int tcpd_setup_socket(int socket);
