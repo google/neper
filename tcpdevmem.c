@@ -10,42 +10,44 @@
 #include "thread.h"
 
 #define TEST_PREFIX "ncdevmem"
+#define RETURN_IF_NON_ZERO(cmd)	\
+	ret = (cmd);		\
+	if (ret) return ret;
 
 int driver_reset(const struct options *opts) {
 	char driver_reset_cmd[512];
 	int ret = 0;
 
 	sprintf(driver_reset_cmd, "ethtool --set-priv-flags %s enable-strict-header-split on", opts->tcpd_link_name);
-	ret = ret | system(driver_reset_cmd);
+	RETURN_IF_NON_ZERO(system(driver_reset_cmd));
 
 	sprintf(driver_reset_cmd, "ethtool --set-priv-flags %s enable-strict-header-split off", opts->tcpd_link_name);
-	ret = ret | system(driver_reset_cmd);
+	RETURN_IF_NON_ZERO(system(driver_reset_cmd));
 
 	sprintf(driver_reset_cmd, "ethtool --set-priv-flags %s enable-header-split off", opts->tcpd_link_name);
-	ret = ret | system(driver_reset_cmd);
+	RETURN_IF_NON_ZERO(system(driver_reset_cmd));
 
 	sprintf(driver_reset_cmd, "ethtool --set-rxfh-indir %s equal 16", opts->tcpd_link_name);
-	ret = ret | system(driver_reset_cmd);
+	RETURN_IF_NON_ZERO(system(driver_reset_cmd));
 
 	sprintf(driver_reset_cmd, "ethtool -K %s ntuple off", opts->tcpd_link_name);
-	ret = ret | system(driver_reset_cmd);
+	RETURN_IF_NON_ZERO(system(driver_reset_cmd));
 
 	sprintf(driver_reset_cmd, "ethtool --set-priv-flags %s enable-strict-header-split off", opts->tcpd_link_name);
-	ret = ret | system(driver_reset_cmd);
+	RETURN_IF_NON_ZERO(system(driver_reset_cmd));
 
 	sprintf(driver_reset_cmd, "ethtool --set-priv-flags %s enable-header-split off", opts->tcpd_link_name);
-	ret = ret | system(driver_reset_cmd);
+	RETURN_IF_NON_ZERO(system(driver_reset_cmd));
 
 	sprintf(driver_reset_cmd, "ethtool -K %s ntuple off", opts->tcpd_link_name);
-	ret = ret | system(driver_reset_cmd);
+	RETURN_IF_NON_ZERO(system(driver_reset_cmd));
 
 	sprintf(driver_reset_cmd, "ethtool --set-priv-flags %s enable-max-rx-buffer-size on", opts->tcpd_link_name);
-	ret = ret | system(driver_reset_cmd);
+	RETURN_IF_NON_ZERO(system(driver_reset_cmd));
 
 	sprintf(driver_reset_cmd, "ethtool -K %s ntuple on", opts->tcpd_link_name);
-	ret = ret | system(driver_reset_cmd);
+	RETURN_IF_NON_ZERO(system(driver_reset_cmd));
 
-	printf("TCPDEVMEM driver reset returning %i\n", ret);
 	return ret;
 }
 
