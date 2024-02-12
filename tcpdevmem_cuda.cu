@@ -303,7 +303,7 @@ int tcpd_recv(int socket, void *f_mbuf, size_t n, int flags, struct thread *t) {
   client_fd = socket;
 
   char buf_dummy[n];
-  char offsetbuf[CMSG_SPACE(sizeof(int) * 1000)];
+  char offsetbuf[CMSG_SPACE(sizeof(iov) * 10000)];
   msg = &msg_local;
 
   memset(msg, 0, sizeof(struct msghdr));
