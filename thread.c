@@ -373,7 +373,8 @@ void start_worker_threads(struct options *opts, struct callbacks *cb,
 #if defined(WITH_TCPDEVMEM_CUDA) || defined(WITH_TCPDEVMEM_UDMA)
         /* perform driver reset (on host) in anticipation of TCPDEVMEM run */
         if (opts->tcpd_nic_pci_addr && !opts->client) {
-                driver_reset(opts);
+                if (driver_reset(opts))
+                        LOG_FATAL(cb, "TCPDEVMEM driver reset failed");
         }
 #endif /* WITH_TCPDEVMEM_CUDA || WITH_TCPDEVMEM_UDMA */
 
