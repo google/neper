@@ -54,6 +54,8 @@ void check_options_common(struct options *opts, struct callbacks *cb)
               "Max pacing rate must be non-negative.");
         CHECK(cb, opts->max_pacing_rate <= UINT64_MAX,
               "Max pacing rate cannot exceed 64 bits.");
+        CHECK(cb, opts->client || (opts->wait_start == 0),
+              "The wait-start option is only valid for clients.");
 }
 
 void check_options_tcp(struct options *opts, struct callbacks *cb)
