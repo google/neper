@@ -52,7 +52,14 @@ void neper_snap_print(const struct neper_snap *, FILE *, double raw_thruput,
  * iter_done() Returns true once the end of the iterator has been reached.
  */
 
-struct neper_snaps;
+struct neper_snaps {
+        struct neper_rusage *rusage;
+        int total;   /* # of snap structs allocated */
+        int count;   /* # of populated snap structs */
+        int iter;    /* iterator bookmark */
+        int extent;  /* extended size of the snap struct */
+        char *ptr;   /* storage */
+};
 
 struct neper_snap *neper_snaps_add(struct neper_snaps *, const struct timespec *, uint64_t);
 int neper_snaps_count(const struct neper_snaps *);
