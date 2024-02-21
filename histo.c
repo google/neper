@@ -16,9 +16,15 @@
 
 #include "histo.h"
 #include "common.h"
+#include "logging.h"
+#include "percentiles.h"
 #include "thread.h"
 
 #include <float.h>
+#include <math.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 
 // use 0.01 us time resolution
 static const int TIME_RESOLUTION = 100 * 1000000;
