@@ -20,6 +20,7 @@
 #include "common.h"
 #include "flow.h"
 #include "print.h"
+#include "snaps.h"
 #include "socket.h"
 #include "stats.h"
 #include "thread.h"
@@ -83,6 +84,7 @@ void stream_handler(struct flow *f, uint32_t events)
         struct thread *t = flow_thread(f);
         void *mbuf = flow_mbuf(f);
         int fd = flow_fd(f);
+        const struct neper_snaps *snaps;
         const struct options *opts = t->opts;
         /*
          * The actual size can be calculated with CMSG_SPACE(sizeof(struct X)),
@@ -106,6 +108,10 @@ void stream_handler(struct flow *f, uint32_t events)
 
         if (events & (EPOLLHUP | EPOLLRDHUP))
                 return flow_delete(f);
+
+        snaps = stat->snaps(stat);
+        if (neper_snaps_count(snaps) == 0)
+                stat->event(t, stat, 0, false, NULL);
 
         if (events & EPOLLIN)
                 do {

@@ -23,15 +23,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-struct neper_snaps {
-        struct neper_rusage *rusage;
-        int total;   /* # of snap structs allocated */
-        int count;   /* # of populated snap structs */
-        int iter;    /* iterator bookmark */
-        int extent;  /* extended size of the snap struct */
-        char *ptr;   /* storage */
-};
-
 /*
  * Compare two neper_snap structs.
  * The one with the earlier timestamp is considered to be smaller.
