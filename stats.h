@@ -17,6 +17,8 @@
 #ifndef THIRD_PARTY_NEPER_STATS_H
 #define THIRD_PARTY_NEPER_STATS_H
 
+#include "snaps.h"
+
 #include <stdbool.h>
 #include <stdio.h>
 

@@ -427,3 +427,10 @@ be insignificant.  However, the keys are case sensitive.
 * C99, avoid compiler-specific extensions.
 * No external dependency.
 * Linux coding style, with tabs expanded to 8 spaces.
+
+## Changelog (not comprehensive)
+
+### 2024-02-21
+
+* **Breaking**: changed histogram implementation
+* 
