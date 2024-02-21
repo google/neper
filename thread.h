@@ -103,7 +103,7 @@ struct thread {
         struct rusage *rusage_start;
         struct neper_stats *stats;
         struct neper_rusage *rusage;
-	struct io_stats io_stats;
+        struct io_stats io_stats;
         struct countdown_cond *data_pending;
         struct rate_limit rl;
         struct flow **flows;  /* indexed by flow_id(flow) */
