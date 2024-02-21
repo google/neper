@@ -19,6 +19,10 @@
 #include "print.h"
 #include "rusage.h"
 
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+
 struct neper_snaps {
         struct neper_rusage *rusage;
         int total;   /* # of snap structs allocated */

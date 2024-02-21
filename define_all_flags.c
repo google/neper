@@ -18,6 +18,7 @@
 #include "flags.h"
 #include "lib.h"
 #include "parse.h"
+#include "percentiles.h"
 #include "define_all_flags.h"
 
 struct flags_parser *add_flags_common(struct flags_parser *fp)
