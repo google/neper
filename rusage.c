@@ -38,13 +38,20 @@ static double get_aggregate_proc_stat_system_time()
         unsigned long dummy, system, irq, softirq;
         int nscan = 0;
         FILE *f = fopen("/proc/stat", "r");
-        if (f) {
-              /* Just keep the important values of the first seven */
-              nscan = fscanf(f, "cpu %lu %lu %lu %lu %lu %lu %lu",
-                 &dummy, &dummy, &system, &dummy, &dummy, &irq, &softirq);
-              fclose(f);
+
+        if (!f)
+        {
+                fprintf(stderr, "Unable to open /proc/stat!\n");
+                exit(1);
         }
-        if (nscan != 7) {
+
+        /* Just keep the important values of the first seven */
+        nscan = fscanf(f, "cpu %lu %lu %lu %lu %lu %lu %lu",
+                       &dummy, &dummy, &system, &dummy, &dummy, &irq, &softirq);
+        fclose(f); // Ensure file is closed in all cases
+
+        if (nscan != 7)
+        {
                 fprintf(stderr, "IO or parser error while reading /proc/stat!\n");
                 exit(1);
         }
