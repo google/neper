@@ -86,32 +86,7 @@ docker push $IMAGE_NAME
 ```
 IMAGE_NAME='gcr.io/a3-tcpd-staging-hostpool/$USER/neper'
 
-function run_neper_container() {
-  docker run \
-    --name neper_c \
-    -u 0 --network=host \
-    --cap-add=IPC_LOCK \
-    --userns=host \
-    --volume /run/tcpx:/tmp \
-    --volume /var/lib/nvidia/lib64:/usr/local/nvidia/lib64 \
-    --volume /var/lib/tcpx:/usr/local/tcpx \
-    --shm-size=1g --ulimit memlock=-1 --ulimit stack=67108864 \
-    --device /dev/nvidia0:/dev/nvidia0 \
-    --device /dev/nvidia1:/dev/nvidia1 \
-    --device /dev/nvidia2:/dev/nvidia2 \
-    --device /dev/nvidia3:/dev/nvidia3 \
-    --device /dev/nvidia4:/dev/nvidia4 \
-    --device /dev/nvidia5:/dev/nvidia5 \
-    --device /dev/nvidia6:/dev/nvidia6 \
-    --device /dev/nvidia7:/dev/nvidia7 \
-    --device /dev/nvidia-uvm:/dev/nvidia-uvm \
-    --device /dev/nvidiactl:/dev/nvidiactl \
-    --cap-add=NET_ADMIN \
-    --env LD_LIBRARY_PATH=/usr/local/nvidia/lib64:/usr/local/tcpx/lib64 \
-    "$@"
-}
-
-run_neper_container -it $IMAGE_NAME bash
+./run_neper_container.sh -i $IMAGE_NAME bash
 ```
 
 
