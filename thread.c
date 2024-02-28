@@ -29,6 +29,9 @@
 #include "rusage.h"
 #include "snaps.h"
 #include "stats.h"
+#if defined(WITH_TCPDEVMEM_CUDA) || defined(WITH_TCPDEVMEM_UDMA)
+#include "tcpdevmem.h"
+#endif /* WITH_TCPDEVMEM_CUDA || WITH_TCPDEVMEM_UDMA */
 #include "thread.h"
 
 #ifndef NO_LIBNUMA
@@ -366,6 +369,14 @@ void start_worker_threads(struct options *opts, struct callbacks *cb,
         LOG_INFO(cb, "Number of allowed_cores = %d", allowed_cores);
 
         int percentiles = percentiles_count(&opts->percentiles);
+
+#if defined(WITH_TCPDEVMEM_CUDA) || defined(WITH_TCPDEVMEM_UDMA)
+        /* perform driver reset (on host) in anticipation of TCPDEVMEM run */
+        if (opts->tcpd_nic_pci_addr && !opts->client) {
+                if (driver_reset(opts))
+                        LOG_FATAL(cb, "TCPDEVMEM driver reset failed");
+        }
+#endif /* WITH_TCPDEVMEM_CUDA || WITH_TCPDEVMEM_UDMA */
 
         for (i = 0; i < opts->num_threads; i++) {
                 t[i].index = i;

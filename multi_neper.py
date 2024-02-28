@@ -26,23 +26,6 @@ link_to_gpu_index = {
         "eth4": "6"
 }
 
-def run_pre_neper_cmds(dev: str):
-        cmds = [
-                f"ethtool --set-priv-flags {dev} enable-strict-header-split on",
-                f"ethtool --set-priv-flags {dev} enable-strict-header-split off",
-                f"ethtool --set-priv-flags {dev} enable-header-split off",
-                f"ethtool --set-rxfh-indir {dev} equal 16",
-                f"ethtool -K {dev} ntuple off",
-                f"ethtool --set-priv-flags {dev} enable-strict-header-split off",
-                f"ethtool --set-priv-flags {dev} enable-header-split off",
-                f"ethtool -K {dev} ntuple off",
-                f"ethtool --set-priv-flags {dev} enable-max-rx-buffer-size on",
-                f"ethtool -K {dev} ntuple on"
-        ]
-
-        for cmd in cmds:
-                subprocess.run(cmd.split(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-
 # returns a 2-tuple of a Neper command and a dict of env vars
 def build_neper_cmd(neper_dir: str, is_client: bool, dev: str,
                     threads: int, flows: int,
@@ -167,10 +150,6 @@ if __name__ == "__main__":
         if not args.client:
                 info("setting up flow-steering rules")
                 # src_ips = args.src_ips.split(",")
-
-                for i, dev in enumerate(devices):
-                        if not args.dry_run:
-                                run_pre_neper_cmds(dev)
 
         cmds = []
         debug(f"running on {devices}")
