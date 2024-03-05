@@ -1,17 +1,23 @@
 #!/bin/bash
 set -e
 
+NEPER_IMG="gcr.io/a3-tcpd-staging-hostpool/stable/neper"
+
 usage() {
   echo "Starts Neper in a container"
   echo "Usage: $0 -c cuda_lib_dir        default: /var/lib/nvidia/lib64"
+  echo "       $0 -i neper_docker_image  default: ${NEPER_IMG}"
   echo "       $0 -h                     print usage guide"
   echo ""
 }
 
-while getopts ":c:h" option; do
+while getopts "c:i:h" option; do
   case $option in
     c)
-      CUDA_LIB_DIR="$OPTARG"
+      CUDA_LIB_DIR="${OPTARG}"
+      ;;
+    i)
+      NEPER_IMG="${OPTARG}"
       ;;
     h)
       usage
@@ -23,6 +29,7 @@ while getopts ":c:h" option; do
       ;;
   esac
 done
+shift $((OPTIND-1))
 
 : ${CUDA_LIB_DIR:="/var/lib/nvidia/lib64"}
 
@@ -54,4 +61,4 @@ function run_neper_container() {
 
 sudo iptables -I INPUT -p tcp -m tcp -j ACCEPT
 
-run_neper_container -it "gcr.io/a3-tcpd-staging-hostpool/neper" $@
+run_neper_container -it "${NEPER_IMG}" $@
