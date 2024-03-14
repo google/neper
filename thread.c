@@ -29,9 +29,9 @@
 #include "rusage.h"
 #include "snaps.h"
 #include "stats.h"
-#if defined(WITH_TCPDEVMEM_CUDA) || defined(WITH_TCPDEVMEM_UDMA)
+#if defined(WITH_TCPDEVMEM_CUDA) || defined(WITH_TCPDEVMEM_UDMABUF)
 #include "tcpdevmem.h"
-#endif /* WITH_TCPDEVMEM_CUDA || WITH_TCPDEVMEM_UDMA */
+#endif /* WITH_TCPDEVMEM_CUDA || WITH_TCPDEVMEM_UDMABUF */
 #include "thread.h"
 
 #ifndef NO_LIBNUMA
@@ -370,13 +370,13 @@ void start_worker_threads(struct options *opts, struct callbacks *cb,
 
         int percentiles = percentiles_count(&opts->percentiles);
 
-#if defined(WITH_TCPDEVMEM_CUDA) || defined(WITH_TCPDEVMEM_UDMA)
+#if defined(WITH_TCPDEVMEM_CUDA) || defined(WITH_TCPDEVMEM_UDMABUF)
         /* perform driver reset (on host) in anticipation of TCPDEVMEM run */
         if (opts->tcpd_nic_pci_addr && !opts->client) {
                 if (driver_reset(opts))
                         LOG_FATAL(cb, "TCPDEVMEM driver reset failed");
         }
-#endif /* WITH_TCPDEVMEM_CUDA || WITH_TCPDEVMEM_UDMA */
+#endif /* WITH_TCPDEVMEM_CUDA || WITH_TCPDEVMEM_UDMABUF */
 
         for (i = 0; i < opts->num_threads; i++) {
                 t[i].index = i;
