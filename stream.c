@@ -26,8 +26,8 @@
 #ifdef WITH_TCPDEVMEM_CUDA
 #include "tcpdevmem_cuda.h"
 #endif
-#ifdef WITH_TCPDEVMEM_UDMA
-#include "tcpdevmem_udma.h"
+#ifdef WITH_TCPDEVMEM_UDMABUF
+#include "tcpdevmem_udmabuf.h"
 #endif
 
 static void *stream_alloc(struct thread *t)
@@ -43,15 +43,15 @@ static void *stream_alloc(struct thread *t)
                 }
         }
 #endif /* WITH_TCPDEVMEM_CUDA */
-#ifdef WITH_TCPDEVMEM_UDMA
+#ifdef WITH_TCPDEVMEM_UDMABUF
         if (!t->f_mbuf && t->opts->tcpd_nic_pci_addr) {
-                if (udma_setup_alloc(t->opts, &t->f_mbuf, t)) {
+                if (udmabuf_setup_alloc(t->opts, &t->f_mbuf, t)) {
                         LOG_FATAL(t->cb, "%s: failed to setup devmem UDMABUF socket",
                                   __func__);
                         exit(1);
                 }
         }
-#endif /* WITH_TCPDEVMEM_UDMA */
+#endif /* WITH_TCPDEVMEM_UDMABUF */
 
         if (!t->f_mbuf) {
                 t->f_mbuf = malloc_or_die(opts->buffer_size, t->cb);
@@ -118,13 +118,13 @@ void stream_handler(struct flow *f, uint32_t events)
                                                            t);
                                 else
 #endif /* WITH_TCPDEVMEM_CUDA */
-#ifdef WITH_TCPDEVMEM_UDMA
+#ifdef WITH_TCPDEVMEM_UDMABUF
                                 if (t->opts->tcpd_nic_pci_addr)
-                                        n = udma_recv(fd, mbuf,
+                                        n = udmabuf_recv(fd, mbuf,
                                                       opts->buffer_size,
                                                       t);
                                 else
-#endif /* WITH_TCPDEVMEM_UDMA */
+#endif /* WITH_TCPDEVMEM_UDMABUF */
                                 n = recv(fd, mbuf, opts->buffer_size,
                                          opts->recv_flags);
                         } while(n == -1 && errno == EINTR);
@@ -144,15 +144,18 @@ void stream_handler(struct flow *f, uint32_t events)
                 do {
 #ifdef WITH_TCPDEVMEM_CUDA
                         if (t->opts->tcpd_gpu_pci_addr) {
-                                n = tcpd_send(fd, mbuf, opts->buffer_size, opts->send_flags);
+                                n = tcpd_send(fd, mbuf, opts->buffer_size, opts->send_flags, t);
                         } else
 #endif /* WITH_TCPDEVMEM_CUDA */
-#ifdef WITH_TCPDEVMEM_UDMA
+#ifdef WITH_TCPDEVMEM_UDMABUF
                         if (t->opts->tcpd_nic_pci_addr) {
-                                n = udma_send(fd, mbuf,
-                                        opts->buffer_size, opts->send_flags);
+                                n = udmabuf_send(fd,
+                                              mbuf,
+                                              opts->buffer_size,
+                                              opts->send_flags,
+                                              t);
                         } else
-#endif /* WITH_TCPDEVMEM_UDMA */
+#endif /* WITH_TCPDEVMEM_UDMABUF */
                         n = send(fd, mbuf, opts->buffer_size, opts->send_flags);
                         if (n == -1) {
                                 if (errno != EAGAIN)

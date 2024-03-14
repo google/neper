@@ -135,7 +135,7 @@ if __name__ == "__main__":
 
         parser.add_argument("-l", "--length", default=10)
         parser.add_argument("--log", default="WARNING")
-        parser.add_argument("-m", "--mode", default="cuda", help="cuda|udma|default")
+        parser.add_argument("-m", "--mode", default="cuda", help="cuda|udmabuf|default")
 
         args = parser.parse_args()
 
@@ -158,7 +158,7 @@ if __name__ == "__main__":
         for i, dev in enumerate(devices):
                 nic_pci, gpu_pci = None, None
 
-                if args.mode.lower() in ["cuda", "udma"]:
+                if args.mode.lower() in ["cuda", "udmabuf"]:
                         nic_pci = link_to_nic_pci_addr[dev]
                 if args.mode.lower() == "cuda":
                         gpu_pci = link_to_gpu_pci_addr[dev]

@@ -12,7 +12,7 @@
 #define TEST_PREFIX "ncdevmem"
 #define RETURN_IF_NON_ZERO(cmd)	\
 	ret = (cmd);		\
-	if (ret) return ret;
+	if (ret) return ret
 
 int driver_reset(const struct options *opts) {
 	char driver_reset_cmd[512];
@@ -67,11 +67,7 @@ int install_flow_steering(const struct options *opts, intptr_t buf,
 
 	ret = ioctl(buf, DMA_BUF_PAGES_BIND_RX, &bind_cmd);
 	if (ret < 0)
-	{
-		printf("%s: [FAIL, bind fail queue=%d]\n", TEST_PREFIX,
-		       num_queues);
-		exit(78);
-	}
+		LOG_FATAL(t->cb, "FAIL, bind fail queue=%d", num_queues);
 
 	/* using t->index below requires 1 thread listening to 1 port
 	 * (see relevant comments in socket.c)
@@ -84,20 +80,20 @@ int install_flow_steering(const struct options *opts, intptr_t buf,
 		"ethtool -N %s flow-type tcp4 src-ip %s dst-ip %s src-port %i dst-port %i queue %i",
 		opts->tcpd_link_name, opts->tcpd_src_ip, opts->tcpd_dst_ip,
 		src_port, dst_port, num_queues);
-	ret = system(flow_steer_cmd);
+	RETURN_IF_NON_ZERO(system(flow_steer_cmd));
 
 	// only running the below ethtool commands after last thread/flow is setup
 	if (t->index == opts->num_flows - 1)
 	{
 		char ethtool_cmd[512];
 		sprintf(ethtool_cmd, "ethtool --set-priv-flags %s enable-strict-header-split on", opts->tcpd_link_name);
-		ret = ret | system(ethtool_cmd);
+		RETURN_IF_NON_ZERO(system(ethtool_cmd));
 
 		sprintf(ethtool_cmd, "ethtool --set-priv-flags %s enable-header-split on", opts->tcpd_link_name);
-		ret = ret | system(ethtool_cmd);
+		RETURN_IF_NON_ZERO(system(ethtool_cmd));
 
 		sprintf(ethtool_cmd, "ethtool --set-rxfh-indir %s equal 8", opts->tcpd_link_name);
-		ret = ret | system(ethtool_cmd);
+		RETURN_IF_NON_ZERO(system(ethtool_cmd));
 
 		printf("ethtool cmds returned %i, sleeping 1...\n", ret);
 		sleep(1);
@@ -105,15 +101,13 @@ int install_flow_steering(const struct options *opts, intptr_t buf,
 	return ret;
 }
 
-int tcpd_setup_socket(int socket)
+int tcpd_setup_socket(struct thread *t, int socket)
 {
 	const int one = 1;
 	if (setsockopt(socket, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one)) ||
 	    setsockopt(socket, SOL_SOCKET, SO_REUSEPORT, &one, sizeof(one)) ||
 	    setsockopt(socket, SOL_SOCKET, SO_ZEROCOPY, &one, sizeof(one)))
-	{
-		perror("tcpd_setup_socket");
-		exit(EXIT_FAILURE);
-	}
+		PLOG_FATAL(t->cb, "tcpd_setup_socket");
+
 	return 0;
 }

@@ -23,8 +23,8 @@ CFLAGS := -std=c99 -Wall -O3 -g -D_GNU_SOURCE -DNO_LIBNUMA
 ifdef WITH_TCPDEVMEM_CUDA
 	CFLAGS += -DWITH_TCPDEVMEM_CUDA -I usr/include
 endif
-ifdef WITH_TCPDEVMEM_UDMA
-	CFLAGS += -DWITH_TCPDEVMEM_UDMA -DNDEBUG=1 -static -I usr/include
+ifdef WITH_TCPDEVMEM_UDMABUF
+	CFLAGS += -DWITH_TCPDEVMEM_UDMABUF -DNDEBUG=1 -static -I usr/include
 	LDFLAGS += -static
 endif
 
@@ -63,10 +63,10 @@ tcp_stream-objs := tcp_stream_main.o tcp_stream.o stream.o $(lib)
 ifdef WITH_TCPDEVMEM_CUDA
 	tcp_stream-objs += tcpdevmem_cuda.o
 endif
-ifdef WITH_TCPDEVMEM_UDMA
-	tcp_stream-objs += tcpdevmem_udma.o
+ifdef WITH_TCPDEVMEM_UDMABUF
+	tcp_stream-objs += tcpdevmem_udmabuf.o
 endif
-ifneq ($(call ifdef_any_of,WITH_TCPDEVMEM_CUDA WITH_TCPDEVMEM_UDMA),)
+ifneq ($(call ifdef_any_of,WITH_TCPDEVMEM_CUDA WITH_TCPDEVMEM_UDMABUF),)
 	tcp_stream-objs += tcpdevmem.o
 endif
 

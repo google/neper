@@ -12,4 +12,4 @@
 int driver_reset(const struct options *opts);
 int install_flow_steering(const struct options *opts, intptr_t buf,
 			  struct thread *t);
-int tcpd_setup_socket(int socket);
+int tcpd_setup_socket(struct thread *t, int socket);

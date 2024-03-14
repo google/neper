@@ -141,7 +141,7 @@ struct flags_parser *add_flags_tcp_stream(struct flags_parser *fp)
         DEFINE_FLAG(fp, bool,          enable_write,    false,   'w', "Write to flows? Enabled by default for the client");
         DEFINE_FLAG(fp, bool,          enable_tcp_maerts,    false,   'M', "Enables TCP_MAERTS test (server writes and client reads). It overrides enable_read, and enable_write");
         DEFINE_FLAG(fp, bool,          async_connect,   false,   0,  "use non blocking connect");
-#if defined(WITH_TCPDEVMEM_CUDA) || defined(WITH_TCPDEVMEM_UDMA)
+#if defined(WITH_TCPDEVMEM_CUDA) || defined(WITH_TCPDEVMEM_UDMABUF)
         DEFINE_FLAG(fp, bool,          tcpd_validate,   false,  0, "Validates that received data is a repeating sequence of 1 to 111 inclusive");
         DEFINE_FLAG(fp, bool,          tcpd_rx_cpy,     false,  0, "After the CUDA buffer is filled to buffer_size, calls cudaMemcpy to a userspace buffer");
         DEFINE_FLAG(fp, const char *,  tcpd_nic_pci_addr, 0,    0, "NIC PCI addr, e.x. 0000:06:00.0");
@@ -152,7 +152,7 @@ struct flags_parser *add_flags_tcp_stream(struct flags_parser *fp)
         DEFINE_FLAG(fp, const char *,  tcpd_link_name,  "eth1", 0, "Link name to bind DMA buffer_pages for Rx");
         DEFINE_FLAG(fp, int,           queue_start,     8,      0, "Queue to start flow-steering at");
         DEFINE_FLAG(fp, int,           queue_num,       4,      0, "Number of queues to flow-steer to");
-#endif /* WITH_TCPDEVMEM_CUDA || WITH_TCPDEVMEM_UDMA */
+#endif /* WITH_TCPDEVMEM_CUDA || WITH_TCPDEVMEM_UDMABUF */
 
         /* Return the updated fp */
         return (fp);
