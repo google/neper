@@ -121,20 +121,19 @@ void gather_rx_data(struct tcpdevmem_cuda_mbuf *tmbuf) {
 
 int get_gpumem_dmabuf_pages_fd(const std::string& gpu_pci_addr,
                                const std::string& nic_pci_addr, void* gpu_mem,
-                               size_t gpu_mem_sz, int* dma_buf_fd, bool is_client) {
+                               size_t gpu_mem_sz, int* dma_buf_fd, bool is_client,
+                               struct thread *t) {
   int err, ret;
 
   cuMemGetHandleForAddressRange((void*)dma_buf_fd, (CUdeviceptr)gpu_mem,
                                 gpu_mem_sz, CU_MEM_RANGE_HANDLE_TYPE_DMA_BUF_FD,
                                 0);
 
-  if (*dma_buf_fd < 0) {
-    perror("cuMemGetHandleForAddressRange() failed!: ");
-    exit(EXIT_FAILURE);
-  }
+  if (*dma_buf_fd < 0)
+    PLOG_FATAL(t->cb, "cuMemGetHandleForAddressRange");
 
   printf("Registered dmabuf region 0x%p of %lu Bytes\n",
-      gpu_mem, gpu_mem_sz);
+         gpu_mem, gpu_mem_sz);
 
   struct dma_buf_create_pages_info frags_create_info;
   frags_create_info.dma_buf_fd = *dma_buf_fd;
@@ -153,7 +152,7 @@ int get_gpumem_dmabuf_pages_fd(const std::string& gpu_pci_addr,
 
   ret = ioctl(*dma_buf_fd, DMA_BUF_CREATE_PAGES, &frags_create_info);
   if (ret < 0) {
-    perror("Error getting dma_buf frags: ");
+    PLOG_ERROR(t->cb, "get dma_buf frags");
     err = -EIO;
     goto err_close_dmabuf;
   }
@@ -199,12 +198,10 @@ int tcpd_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct thre
 
   gpu_mem_fd_ = get_gpumem_dmabuf_pages_fd(gpu_pci_addr, nic_pci_addr,
                                            gpu_gen_mem_, alloc_size,
-                                           &dma_buf_fd_, is_client);
+                                           &dma_buf_fd_, is_client, t);
 
-  if (gpu_mem_fd_ < 0) {
-    printf("get_gpumem_dmabuf_pages_fd() failed!: ");
-    exit(71);
-  }
+  if (gpu_mem_fd_ < 0)
+    LOG_FATAL(t->cb, "get_gpumem_dmabuf_pages_fd");
 
   if (!is_client)
     install_flow_steering(opts, gpu_mem_fd_, t);
@@ -226,7 +223,7 @@ int tcpd_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct thre
   return 0;
 }
 
-int tcpd_send(int socket, void *buf, size_t n, int flags) {
+int tcpd_send(int socket, void *buf, size_t n, int flags, struct thread *t) {
   int gpu_mem_fd_;
   struct iovec iov;
   struct msghdr msg;
@@ -240,7 +237,6 @@ int tcpd_send(int socket, void *buf, size_t n, int flags) {
   gpu_mem_fd_ = tmbuf->gpu_mem_fd_;
 
   memset(&msg, 0, sizeof(msg));
-  // memset(cmsg, 0, sizeof(struct cmsghdr));
 
   iov.iov_base = NULL;
   iov.iov_len = n - tmbuf->bytes_sent;
@@ -259,15 +255,11 @@ int tcpd_send(int socket, void *buf, size_t n, int flags) {
   ((int *)CMSG_DATA(cmsg))[1] = (int)tmbuf->bytes_sent;
 
   ssize_t bytes_sent = sendmsg(socket, &msg, MSG_ZEROCOPY | MSG_DONTWAIT);
-  if (bytes_sent < 0 && errno != EWOULDBLOCK && errno != EAGAIN) {
-    perror("sendmsg() error: ");
-    exit(EXIT_FAILURE);
-  }
+  if (bytes_sent < 0 && errno != EWOULDBLOCK && errno != EAGAIN)
+    PLOG_FATAL(t->cb, "sendmsg");
 
-  if (bytes_sent == 0) {
-    perror("sendmsg() sent 0 bytes. Something is wrong.\n");
-    exit(EXIT_FAILURE);
-  }
+  if (bytes_sent == 0)
+    PLOG_FATAL(t->cb, "sendmsg sent 0 bytes");
 
   tmbuf->bytes_sent += bytes_sent;
   if (tmbuf->bytes_sent == n)
@@ -431,10 +423,9 @@ int tcpd_recv(int socket, void *f_mbuf, size_t n, int flags, struct thread *t) {
     ret = setsockopt(client_fd, SOL_SOCKET,
                       SO_DEVMEM_DONTNEED, tokens->data(),
                       tokens->size() * sizeof(devmemtoken));
-    if (ret) {
-      perror("DONTNEED failed");
-      exit(1);
-    }
+    if (ret)
+      PLOG_FATAL(t->cb, "setsockopt DONTNEED failed");
+
     vectors->clear();
     tokens->clear();
     rx_blks_->clear();

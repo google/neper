@@ -1,14 +1,14 @@
-# Neper with TCPDirect run instructions
+# Neper with TCPDevmem run instructions
 
 Table of Contents
-- [Neper with TCPDirect run instructions](#neper-with-tcpdirect-run-instructions)
-  - [TCPDirect CUDA: tcp\_stream within Docker container](#tcpdirect-cuda-tcp_stream-within-docker-container)
+- [Neper with TCPDevmem run instructions](#neper-with-tcpdevmem-run-instructions)
+  - [TCPDevmem CUDA: tcp\_stream within Docker container](#tcpdevmem-cuda-tcp_stream-within-docker-container)
       - [Note on accessing Neper logs or long-running container:](#note-on-accessing-neper-logs-or-long-running-container)
     - [Building your own image for testing](#building-your-own-image-for-testing)
       - [building the image on your workstation, within the repo directory](#building-the-image-on-your-workstation-within-the-repo-directory)
       - [creating a container on the VM](#creating-a-container-on-the-vm)
     - [Override CUDA library directory (DLVM)](#override-cuda-library-directory-dlvm)
-  - [TCPDirect UDMA: Compiling tcp\_stream](#tcpdirect-udma-compiling-tcp_stream)
+  - [TCPDevmem UDMABUF: Compiling tcp\_stream](#tcpdevmem-udmabuf-compiling-tcp_stream)
   - [Running tcp\_stream](#running-tcp_stream)
     - [Added flags](#added-flags)
     - [Running tcp\_stream via `multi_neper.py`](#running-tcp_stream-via-multi_neperpy)
@@ -16,10 +16,10 @@ Table of Contents
     - [Running tcp\_stream directly](#running-tcp_stream-directly)
 
 
-## TCPDirect CUDA: tcp_stream within Docker container
+## TCPDevmem CUDA: tcp_stream within Docker container
 
 ```
-# On COS VM, do:
+# On VM, do:
 FLOWS=2
 BUF_SIZE=409600
 DEVS=eth1,eth2,eth3,eth4
@@ -71,9 +71,9 @@ git clone -b tcpd https://github.com/google/neper.git
 cd neper
 
 # copy kernel header files to Neper working directory
-# (assumed to be found in ~/cos-kernel/usr/include)
+# (assumed to be found in ~/kernel/usr/include)
 mkdir usr
-cp -r ~/cos-kernel/usr/include/ ./usr/
+cp -r ~/kernel/usr/include/ ./usr/
 
 IMAGE_NAME='gcr.io/a3-tcpd-staging-hostpool/$USER/neper'
 docker build -t $IMAGE_NAME .
@@ -99,13 +99,11 @@ CUDA_LIB_DIR=/usr/lib/x86_64-linux-gnu ./run_neper_container.sh bash
 ```
 
 
-## TCPDirect UDMA: Compiling tcp_stream
+## TCPDevmem UDMABUF: Compiling tcp_stream
 
-**UDMA-capable tcp_stream can be built statically on a workstation.**
+**UDMABUF-capable tcp_stream can be built statically on a workstation.**
 
-Neper can be built statically on a host with UDMA header files.
-
-The Makefile assumes that the header files are found at `usr/include` within the Neper directory.
+Neper can be built statically on a host with UDMABUF header files.
 
 ```
 # clone the Neper repository and checkout the tcpd branch
@@ -113,11 +111,11 @@ git clone -b tcpd https://github.com/google/neper.git
 cd neper
 
 # copy kernel header files to Neper working directory
-# (assumed to be found in ~/cos-kernel/usr/include)
+# (assumed to be found in ~/kernel/usr/include)
 mkdir usr
-cp -r ~/cos-kernel/usr/include/ ./usr/
+cp -r ~/kernel/usr/include/ ./usr/
 
-make tcp_steam WITH_TCPDEVMEM_UDMA=1
+make tcp_steam WITH_TCPDEVMEM_UDMABUF=1
 
 # copy the binary to your hosts
 scp tcp_stream root@${HOST1}:~/
@@ -137,10 +135,10 @@ In general, these flags will be automatically populated by `multi_neper.py`.
 
 ```
 --tcpd-validate     # payload validation - must pass to both Tx/Rx if enabled
---tcpd-tcpd-rx-cpy
+--tcpd-tcpd-rx-cpy  # copies payload to another buffer (but doesn't validate)
 --tcpd-nic-pci-addr
 --tcpd-gpu-pci-addr
---tcpd-phys-len     # CUDA mode allows for a much larger value than UDMA mode
+--tcpd-phys-len     # CUDA mode allows for a much larger value than UDMABUF mode
 --tcpd-src-ip
 --tcpd-dst-ip
 --tcpd-link-name
@@ -148,16 +146,14 @@ In general, these flags will be automatically populated by `multi_neper.py`.
 --queue-num
 ```
 
-Running TCPDirect requires the toggling of a handful of ethtool commands on the receiver (host). If running tcp_stream via `multi_neper.py`, this will automatically be done before each run.
-
-Otherwise, it might be necessary to run these commands before each tcp_stream run.
+`--tcpd-validate`: Client populates the send buffer with [1,111] repeating, and Host verifies the repeating sequence.
 
 
 ### Running tcp_stream via `multi_neper.py`
 
 `multi_neper.py` is a python script that runs in parallel multiple tcp_streams, which is useful when running tcp_stream across multiple pairs of NICs.
 
-The script also calls ethtool commands on the receiver (host) before spawning tcp_streams, to set the receiver into a TCPDirect-capable state.
+The script also calls ethtool commands on the receiver (host) before spawning tcp_streams, to set the receiver into a TCPDevmem-capable state.
 
 To view all of `multi_neper.py`’s accepted flags, run `multi_neper.py --help`.
 

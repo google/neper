@@ -112,7 +112,7 @@ void check_options_tcp_stream(struct options *opts, struct callbacks *cb)
             }
       }
 #endif /* WITH_TCPDEVMEM_CUDA */
-#if defined(WITH_TCPDEVMEM_CUDA) || defined(WITH_TCPDEVMEM_UDMA)
+#if defined(WITH_TCPDEVMEM_CUDA) || defined(WITH_TCPDEVMEM_UDMABUF)
       if (opts->tcpd_nic_pci_addr) {
             CHECK(cb, opts->tcpd_phys_len > 0,
                   "Must provide non-zero --tcpd-phys-len flag when running in devmem TCP mode.");
@@ -128,7 +128,7 @@ void check_options_tcp_stream(struct options *opts, struct callbacks *cb)
                         "Must provide destination IP address for devmem TCP host.");
             }
       }
-#endif /* WITH_TCPDEVMEM_CUDA || WITH_TCPDEVMEM_UDMA */
+#endif /* WITH_TCPDEVMEM_CUDA || WITH_TCPDEVMEM_UDMABUF */
 }
 
 void check_options_udp_rr(struct options *opts, struct callbacks *cb)
