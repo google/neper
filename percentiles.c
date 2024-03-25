@@ -71,7 +71,7 @@ void percentiles_parse(const char *arg, void *out, struct callbacks *cb)
                 else
                         p->p_th[++cur] = p->p_th[i];
         }
-        p->p_count = cur;
+        p->p_count = cur + 1;
 }
 
 void percentiles_print(const char *name, const void *var, struct callbacks *cb)
