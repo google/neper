@@ -31,7 +31,7 @@ struct tcpdevmem_cuda_mbuf {
 
 int tcpd_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct thread *t);
 int cuda_flow_cleanup(void *f_mbuf);
-int tcpd_send(int socket, void *buf, size_t n, int flags);
+int tcpd_send(int socket, void *buf, size_t n, int flags, struct thread *t);
 int tcpd_recv(int fd, void *f_mbuf, size_t n, int flags, struct thread *t);
 
 #if __cplusplus
