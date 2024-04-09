@@ -9,6 +9,7 @@ Table of Contents
       - [creating a container on the VM](#creating-a-container-on-the-vm)
     - [Override CUDA library directory (DLVM)](#override-cuda-library-directory-dlvm)
   - [TCPDevmem UDMABUF: Compiling tcp\_stream](#tcpdevmem-udmabuf-compiling-tcp_stream)
+    - [Manually specifying kernel headers directory (i.e. NOT in `usr/include`)](#manually-specifying-kernel-headers-directory-ie-not-in-usrinclude)
   - [Running tcp\_stream](#running-tcp_stream)
     - [Added flags](#added-flags)
     - [Running tcp\_stream via `multi_neper.py`](#running-tcp_stream-via-multi_neperpy)
@@ -123,6 +124,17 @@ scp multi_neper.py root@${HOST1}:~/
 
 scp tcp_stream root@${HOST2}:~/
 scp multi_neper.py root@${HOST2}:~/
+```
+
+### Manually specifying kernel headers directory (i.e. NOT in `usr/include`)
+
+Copying the header files is unnecessary if you override `HEADERS_DIR` variable when running make. The default value for this variable is `usr/include`.
+
+```
+git clone -b tcpd https://github.com/google/neper.git
+cd neper
+
+make tcp_steam WITH_TCPDEVMEM_UDMABUF=1 HEADERS_DIR=~/kernel/usr/include
 ```
 
 
