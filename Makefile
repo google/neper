@@ -20,11 +20,13 @@ all: binaries
 
 CFLAGS := -std=c99 -Wall -O3 -g -D_GNU_SOURCE -DNO_LIBNUMA
 
+HEADERS_DIR := usr/include
+
 ifdef WITH_TCPDEVMEM_CUDA
-	CFLAGS += -DWITH_TCPDEVMEM_CUDA -I usr/include
+	CFLAGS += -DWITH_TCPDEVMEM_CUDA -I $(HEADERS_DIR)
 endif
 ifdef WITH_TCPDEVMEM_UDMABUF
-	CFLAGS += -DWITH_TCPDEVMEM_UDMABUF -DNDEBUG=1 -static -I usr/include
+	CFLAGS += -DWITH_TCPDEVMEM_UDMABUF -DNDEBUG=1 -static -I $(HEADERS_DIR)
 	LDFLAGS += -static
 endif
 
@@ -86,7 +88,7 @@ psp_rr-objs := psp_rr_main.o psp_rr.o rr.o psp_lib.o $(lib)
 ext-libs := -lm -lrt -lpthread
 
 tcpdevmem_cuda.o: tcpdevmem_cuda.cu
-	nvcc -arch=sm_90 -O3 -g -I usr/include -D_GNU_SOURCE -DNO_LIBNUMA -DWITH_TCPDEVMEM_CUDA -c -o $@ $^
+	nvcc -arch=sm_90 -O3 -g -I $(HEADERS_DIR) -D_GNU_SOURCE -DNO_LIBNUMA -DWITH_TCPDEVMEM_CUDA -c -o $@ $^
 
 tcp_rr: $(tcp_rr-objs)
 	$(CC) $(LDFLAGS) -o $@ $^ $(ext-libs)
