@@ -77,7 +77,7 @@ mkdir usr
 cp -r ~/kernel/usr/include/ ./usr/
 
 IMAGE_NAME='gcr.io/a3-tcpd-staging-hostpool/$USER/neper'
-docker build -t $IMAGE_NAME .
+docker build -f tcpdevmem.Dockerfile -t $IMAGE_NAME .
 docker push $IMAGE_NAME
 ```
 
