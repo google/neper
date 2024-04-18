@@ -278,12 +278,12 @@ void flow_delete(struct flow *f)
         }
 
 #ifdef WITH_TCPDEVMEM_CUDA
-        if (flow_thread(f)->opts->tcpd_gpu_pci_addr) {
+        if (flow_thread(f)->opts->tcpd_gpu_pci_addr)
                 cuda_flow_cleanup(f->f_mbuf);
-        } else
 #endif /* WITH_TCPDEVMEM_CUDA */
 #ifdef WITH_TCPDEVMEM_UDMABUF
-        if (flow_thread(f)->opts->tcpd_nic_pci_addr)
+        if (flow_thread(f)->opts->tcpd_nic_pci_addr
+            && !flow_thread(f)->opts->tcpd_gpu_pci_addr)
                 udmabuf_flow_cleanup(f->f_mbuf);
 #endif /* WITH_TCPDEVMEM_UDMABUF */
 
