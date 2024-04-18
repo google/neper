@@ -59,7 +59,7 @@ int install_flow_steering(const struct options *opts, intptr_t buf,
 	int ret;
 
 	int num_queues = q_start + (t->index % q_num);
-	printf("Bind to queue %i\n", num_queues);
+	LOG_INFO(t->cb, "Bind to queue %i\n", num_queues);
 	struct dma_buf_pages_bind_rx_queue bind_cmd;
 
 	strcpy(bind_cmd.ifname, opts->tcpd_link_name);
@@ -95,7 +95,7 @@ int install_flow_steering(const struct options *opts, intptr_t buf,
 		sprintf(ethtool_cmd, "ethtool --set-rxfh-indir %s equal 8", opts->tcpd_link_name);
 		RETURN_IF_NON_ZERO(system(ethtool_cmd));
 
-		printf("ethtool cmds returned %i, sleeping 1...\n", ret);
+		LOG_INFO(t->cb, "ethtool cmds returned %i, sleeping 1...\n", ret);
 		sleep(1);
 	}
 	return ret;

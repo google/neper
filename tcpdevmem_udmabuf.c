@@ -51,21 +51,20 @@ int udmabuf_setup_alloc(const struct options *opts, void **f_mbuf, struct thread
         if (memfd < 0)
                 LOG_FATAL(t->cb, "[skip,no-memfd]");
 
-
         ret = fcntl(memfd, F_ADD_SEALS, F_SEAL_SHRINK);
         if (ret < 0)
                 LOG_FATAL(t->cb, "[skip,fcntl-add-seals]");
 
         ret = ftruncate(memfd, size);
         if (ret == -1)
-                LOG_FATAL(t->cb, "[FAIL,memfd-truncate]\n");
+                LOG_FATAL(t->cb, "[FAIL,memfd-truncate]");
 
         memset(&create, 0, sizeof(create));
 
         create.memfd = memfd;
         create.offset = 0;
         create.size = size;
-        printf("size=%lu\n", size);
+        LOG_INFO(t->cb, "udmabuf size=%lu", size);
         buf = ioctl(devfd, UDMABUF_CREATE, &create);
         if (buf < 0)
                 LOG_FATAL(t->cb, "[FAIL, create udmabuf]");
@@ -137,7 +136,6 @@ int udmabuf_send(int socket, void *f_mbuf, size_t n, int flags, struct thread *t
         munmap(buf_mem, n);
 
         memset(msg, 0, sizeof(struct msghdr));
-        // memset(cmsg, 0, sizeof(struct cmsghdr));
 
         iov.iov_base = buf_dummy;
         iov.iov_len = n - tmbuf->bytes_sent;

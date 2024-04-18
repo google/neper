@@ -132,8 +132,8 @@ int get_gpumem_dmabuf_pages_fd(const std::string& gpu_pci_addr,
   if (*dma_buf_fd < 0)
     PLOG_FATAL(t->cb, "cuMemGetHandleForAddressRange");
 
-  printf("Registered dmabuf region 0x%p of %lu Bytes\n",
-         gpu_mem, gpu_mem_sz);
+  LOG_INFO(t->cb, "Registered dmabuf region 0x%p of %lu Bytes\n",
+           gpu_mem, gpu_mem_sz);
 
   struct dma_buf_create_pages_info frags_create_info;
   frags_create_info.dma_buf_fd = *dma_buf_fd;
@@ -169,8 +169,6 @@ int tcpd_cuda_setup_alloc(const struct options *opts, void **f_mbuf, struct thre
   void *gpu_gen_mem_;
   int gpu_mem_fd_;
   int dma_buf_fd_;
-  // int q_start = opts->queue_start;
-  // int q_num = opts->queue_num;
   struct tcpdevmem_cuda_mbuf *tmbuf;
   const char *gpu_pci_addr = opts->tcpd_gpu_pci_addr;
   const char *nic_pci_addr = opts->tcpd_nic_pci_addr;
@@ -312,13 +310,13 @@ int tcpd_recv(int socket, void *f_mbuf, size_t n, int flags, struct thread *t) {
 
   ssize_t received = recvmsg(socket, msg, MSG_SOCK_DEVMEM | MSG_DONTWAIT);
   if (received < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
-    printf("%s %d: recvmsg returned < 0\n", __func__, __LINE__);
+    LOG_ERROR(t->cb, "%s %d: recvmsg returned < 0\n", __func__, __LINE__);
     return -1;
   } else if (received < 0) {
-    printf("%s %d\n", __func__, __LINE__);
+    LOG_ERROR(t->cb, "%s %d\n", __func__, __LINE__);
     return -1;
   } else if (received == 0) {
-    printf("Client exited\n");
+    LOG_ERROR(t->cb, "Client exited\n");
     return -1;
   }
 
