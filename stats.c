@@ -177,8 +177,12 @@ struct neper_stat *neper_stat_init(struct flow *f, struct neper_histo *histo,
 {
         struct thread *t = flow_thread(f);
         const struct options *opts = t->opts;
-        const int n = (opts->test_length / opts->interval) + 1;
-
+        int n;
+        // test_length, >0 seconds, <0 transactions.
+        if (opts->test_length < 0)
+                n = -opts->test_length + 1;
+        else
+                n = (opts->test_length / opts->interval) + 1;
         struct stat_impl *impl =
                 calloc_or_die(1, sizeof(struct stat_impl), t->cb);
         struct neper_stat *stat = &impl->stat;

@@ -531,7 +531,7 @@ int run_main_thread(struct options *opts, struct callbacks *cb,
                 data_pending = NULL;
         } else {
                 PRINT(cb, "total_transactions", "%d", -(opts->test_length));
-                data_pending = calloc(1, sizeof(*data_pending));
+                data_pending = calloc(1, sizeof(struct countdown_cond));
                 countdown_cond_init(data_pending, -(opts->test_length));
         }
         if (opts->dry_run)
