@@ -29,6 +29,9 @@
 #include "rusage.h"
 #include "snaps.h"
 #include "stats.h"
+#if defined(WITH_TCPDEVMEM_CUDA) || defined(WITH_TCPDEVMEM_UDMABUF)
+#include "tcpdevmem.h"
+#endif /* WITH_TCPDEVMEM_CUDA || WITH_TCPDEVMEM_UDMABUF */
 #include "thread.h"
 
 #ifndef NO_LIBNUMA
@@ -359,6 +362,14 @@ void start_worker_threads(struct options *opts, struct callbacks *cb,
 
         allowed_cores = get_cpuset(cpuset, cb);
         LOG_INFO(cb, "Number of allowed_cores = %d", allowed_cores);
+
+#if defined(WITH_TCPDEVMEM_CUDA) || defined(WITH_TCPDEVMEM_UDMABUF)
+        /* perform driver reset (on host) in anticipation of TCPDEVMEM run */
+        if (opts->tcpd_nic_pci_addr && !opts->client) {
+                if (driver_reset(opts))
+                        LOG_FATAL(cb, "TCPDEVMEM driver reset failed");
+        }
+#endif /* WITH_TCPDEVMEM_CUDA || WITH_TCPDEVMEM_UDMABUF */
 
         for (i = 0; i < opts->num_threads; i++) {
                 t[i].index = i;

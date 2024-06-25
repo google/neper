@@ -19,6 +19,12 @@
 #include "socket.h"
 #include "thread.h"
 #include "stats.h"
+#ifdef WITH_TCPDEVMEM_CUDA
+#include "tcpdevmem_cuda.h"
+#endif /* WITH_TCPDEVMEM_CUDA */
+#ifdef WITH_TCPDEVMEM_UDMABUF
+#include "tcpdevmem_udmabuf.h"
+#endif /* WITH_TCPDEVMEM_UDMABUF */
 
 /*
  * We define the flow struct locally to this file to force outside users to go
@@ -270,6 +276,16 @@ void flow_delete(struct flow *f)
                 /* If we kept stats, forget this flow */
                 thread_clear_flow_or_die(f->f_thread, f);
         }
+
+#ifdef WITH_TCPDEVMEM_CUDA
+        if (flow_thread(f)->opts->tcpd_gpu_pci_addr)
+                cuda_flow_cleanup(f->f_mbuf);
+#endif /* WITH_TCPDEVMEM_CUDA */
+#ifdef WITH_TCPDEVMEM_UDMABUF
+        if (flow_thread(f)->opts->tcpd_nic_pci_addr
+            && !flow_thread(f)->opts->tcpd_gpu_pci_addr)
+                udmabuf_flow_cleanup(f->f_mbuf);
+#endif /* WITH_TCPDEVMEM_UDMABUF */
 
 /* TODO: need to free the stat struct here for crr tests */
         free(f->f_opaque);

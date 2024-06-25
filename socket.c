@@ -18,6 +18,15 @@
 #include "flow.h"
 #include "socket.h"
 #include "thread.h"
+#ifdef WITH_TCPDEVMEM_CUDA
+#include "tcpdevmem_cuda.h"
+#endif
+#ifdef WITH_TCPDEVMEM_UDMABUF
+#include "tcpdevmem_udmabuf.h"
+#endif
+#if defined(WITH_TCPDEVMEM_CUDA) || defined(WITH_TCPDEVMEM_UDMABUF)
+#include "tcpdevmem.h"
+#endif
 
 #ifndef NO_LIBNUMA
 #include "third_party/libnuma/numa.h"
@@ -63,6 +72,24 @@ static void socket_init_not_established(struct thread *t, int s)
                 if (err)
                         PLOG_ERROR(t->cb, "setsockopt(SO_LINGER)");
         }
+#ifdef WITH_TCPDEVMEM_CUDA
+        if (!t->f_mbuf && opts->tcpd_gpu_pci_addr) {
+                if (tcpd_cuda_setup_alloc(t->opts, &t->f_mbuf, t))
+                        LOG_FATAL(t->cb, "%s: failed to setup devmem CUDA socket",
+                                  __func__);
+        }
+#endif /* WITH_TCPDEVMEM_CUDA */
+#ifdef WITH_TCPDEVMEM_UDMABUF
+        if (!t->f_mbuf && opts->tcpd_nic_pci_addr) {
+                if (udmabuf_setup_alloc(t->opts, &t->f_mbuf, t))
+                        LOG_FATAL(t->cb, "%s: failed to setup devmem UDMABUF socket",
+                                  __func__);
+        }
+#endif /* WITH_TCPDEVMEM_UDMABUF */
+#if defined(WITH_TCPDEVMEM_CUDA) || defined(WITH_TCPDEVMEM_UDMABUF)
+        if (opts->tcpd_nic_pci_addr)
+                tcpd_setup_socket(t, s);
+#endif /* WITH_TCPDEVMEM_CUDA || WITH_TCPDEVMEM_UDMABUF */
 }
 
 /*
@@ -242,6 +269,24 @@ void socket_listen(struct thread *t)
         struct addrinfo *ai = getaddrinfo_or_die(opts->host, opts->port, &hints,
                                                  cb);
         int port = atoi(opts->port);
+#if defined(WITH_TCPDEVMEM_CUDA) || defined(WITH_TCPDEVMEM_UDMABUF)
+        /* TCPDevmem:
+         * Since each thread has a dma buffer, and
+         * flow-steering rules are required, threads, TCP connections, and
+         * dma buffers need to be 1:1:1.
+         *
+         * We enforce that by co-opting the num_ports option.
+         *
+         * thread/flow 0 will listen on port x, and use thread_0's buf
+         * thread_1/flow_1 listen on x+1 -> thread_1->f_mbuf
+         * etc...
+         */
+        if (opts->tcpd_nic_pci_addr) {
+                port += t->index;
+                reset_port(ai, port, cb);
+        }
+#endif /* WITH_TCPDEVMEM_CUDA || WITH_TCPDEVMEM_UDMABUF */
+
         int i, n, s;
 
         struct flow_create_args args = {
@@ -257,6 +302,17 @@ void socket_listen(struct thread *t)
         switch (ai->ai_socktype) {
         case SOCK_STREAM:
                 n = opts->num_ports ? opts->num_ports : 1;
+#if defined(WITH_TCPDEVMEM_CUDA) || defined(WITH_TCPDEVMEM_UDMABUF)
+                /* TCP Devmem:
+                 * See TCP Devmem comment above^
+                 *
+                 * We are co-opting the num_ports option, so each thread/flow
+                 * listens on a port that's 1 larger than the previous thread's
+                 * port.
+                 */
+                if (opts->tcpd_nic_pci_addr)
+                        n = 1;
+#endif /* WITH_TCPDEVMEM_CUDA || WITH_TCPDEVMEM_UDMABUF */
                 for (i = 0; i < n; i++) {
                         s = socket_bind_listener(t, ai);
                         socket_init_not_established(t, s);

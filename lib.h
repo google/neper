@@ -108,6 +108,18 @@ struct options {
         bool async_connect;
 
         /* tcp_stream */
+#if defined(WITH_TCPDEVMEM_CUDA) || defined(WITH_TCPDEVMEM_UDMABUF)
+        bool tcpd_validate;
+        bool tcpd_rx_cpy;
+        const char *tcpd_nic_pci_addr;
+        const char *tcpd_gpu_pci_addr;
+        unsigned long long tcpd_phys_len;
+        const char *tcpd_src_ip;
+        const char *tcpd_dst_ip;
+        const char *tcpd_link_name;
+        int queue_start;
+        int queue_num;
+#endif /* WITH_TCPDEVMEM_CUDA || WITH_TCPDEVMEM_UDMABUF */
         bool split_bidir;  /* implies enable_read, enable_write, split rx/tx */
         bool enable_read;
         bool enable_write;

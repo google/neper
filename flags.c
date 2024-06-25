@@ -157,6 +157,8 @@ static void default_parser(const char *type, char *arg, void *out,
                 *(unsigned long *)out = strtoul(arg, NULL, 0);
         else if (strcmp(type, "double") == 0)
                 *(double *)out = atof(arg);
+        else if (strcmp(type, "unsigned long long") == 0)
+                *(unsigned long long *)out = strtoull(arg, NULL, 0);
         else
                 LOG_ERROR(cb, "Unknown type `%s' for arg `%s'.", type, arg);
 }
@@ -339,6 +341,8 @@ static void print_flag(const struct flag *flag, struct callbacks *cb)
                 PRINT(cb, name, "%f", *(double *)var);
         else if (strcmp(type, "long long") == 0)
                 PRINT(cb, name, "%lld", *(long long *)var);
+        else if (strcmp(type, "unsigned long long") == 0)
+                PRINT(cb, name, "%llu", *(unsigned long long *)var);
         else
                 LOG_ERROR(cb, "Unknown type `%s' for variable %s", type, name);
 }
