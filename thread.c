@@ -344,7 +344,7 @@ void start_worker_threads(struct options *opts, struct callbacks *cb,
 {
         cpu_set_t *cpuset;
         pthread_attr_t attr;
-        int s, i, allowed_cores;
+        int s, i, allowed_cores = 0;
 
         cpuset = calloc(CPU_SETSIZE, sizeof(cpu_set_t));
         if (!cpuset)
@@ -356,9 +356,6 @@ void start_worker_threads(struct options *opts, struct callbacks *cb,
         s = pthread_attr_init(&attr);
         if (s != 0)
                 LOG_FATAL(cb, "pthread_attr_init: %s", strerror(s));
-
-        allowed_cores = get_cpuset(cpuset, cb);
-        LOG_INFO(cb, "Number of allowed_cores = %d", allowed_cores);
 
         for (i = 0; i < opts->num_threads; i++) {
                 t[i].index = i;
@@ -402,6 +399,10 @@ void start_worker_threads(struct options *opts, struct callbacks *cb,
                         LOG_FATAL(cb, "pthread_create: %s", strerror(s));
 
                 if (opts->pin_cpu) {
+                        if (allowed_cores == 0) {
+                          allowed_cores = get_cpuset(cpuset, cb);
+                          LOG_INFO(cb, "Number of allowed_cores = %d", allowed_cores);
+                        }
                         s = pthread_setaffinity_np(t[i].id,
                                                 sizeof(cpu_set_t),
                                                 &cpuset[i % allowed_cores]);
