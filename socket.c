@@ -53,8 +53,6 @@ static void socket_init_not_established(struct thread *t, int s)
                 set_freebind(s, cb);
         if (opts->zerocopy)
                 set_zerocopy(s, 1, cb);
-        if (opts->tcp_tx_delay)
-                set_tcp_tx_delay(s, opts->tcp_tx_delay, cb);
         if (opts->client && !opts->time_wait) {
                 struct linger l;
                 l.l_onoff = 1;
@@ -80,6 +78,8 @@ static void socket_init_established(struct thread *t, int s)
                 uint64_t m = opts->max_pacing_rate;
                 setsockopt(s, SOL_SOCKET, SO_MAX_PACING_RATE, &m, sizeof(m));
         }
+        if (opts->tcp_tx_delay)
+                set_tcp_tx_delay(s, opts->tcp_tx_delay, cb);
         set_nonblocking(s, cb);
 }
 
