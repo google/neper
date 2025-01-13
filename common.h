@@ -106,6 +106,22 @@ static inline double seconds_between(const struct timespec *a,
         return (b->tv_sec - a->tv_sec) + (b->tv_nsec - a->tv_nsec) * 1e-9;
 }
 
+/* Round up to the nearest ms. */
+static inline int timespec_to_ms(const struct timespec *ts)
+{
+        return ts->tv_sec * 1000 + ts->tv_nsec / (1000 * 1000) +
+                        !!(ts->tv_nsec % (1000 * 1000));
+}
+
+static inline struct timespec ms_to_timespec(int ms)
+{
+        struct timespec ts = {
+                .tv_sec = ms / 1000,
+                .tv_nsec = (ms % 1000) * 1000 * 1000,
+        };
+        return ts;
+}
+
 /* Stats are computed wrong with 2 samples or less. Force a minimum value,
  * the larger the better (note, test length is at least 1).
  */

@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <time.h>
+
 #include "common.h"
 #include "flow.h"
 #include "loop.h"
@@ -69,8 +71,12 @@ void *loop(struct thread *t)
         pthread_barrier_wait(t->ready);
         while (!t->stop) {
                 /* Serve pending event, compute timeout to next event */
-                int ms = flow_serve_pending(t);
-                int nfds = epoll_wait(t->epfd, events, opts->maxevents, ms);
+                struct timespec timeout;
+                bool indefinite = flow_serve_pending(t, &timeout);
+                /* Passing a NULL timeout causes us to block indefinitely. */
+                struct timespec *poll_timeout = indefinite ? NULL : &timeout;
+
+                int nfds = t->poll_func(t->epfd, events, opts->maxevents, poll_timeout);
                 int i;
 
                 if (nfds == -1) {

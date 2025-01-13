@@ -76,6 +76,9 @@ struct io_stats {
         uint64_t rx_bytes;
 };
 
+typedef int (*poll_wait)(int epfd, struct epoll_event *events, int maxevents,
+                         struct timespec *timeout);
+
 struct thread {
         int index;
         pthread_t id;
@@ -108,6 +111,7 @@ struct thread {
         struct rate_limit rl;
         struct flow **flows;  /* indexed by flow_id(flow) */
         int flow_space;  /* space allocated in *flows */
+        poll_wait poll_func;
 };
 
 int thread_stats_events(const struct thread *);

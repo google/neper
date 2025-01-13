@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <time.h>
+
 #include "common.h"
 #include "flow.h"
 #include "socket.h"
@@ -205,8 +207,10 @@ static void run_ready_handlers(struct thread *t)
 
 /* Serve pending eligible flows, and return the number of milliseconds to
  * the next scheduled event. To be called before blocking in the main loop.
+ *
+ * Returns true iff the timeout should be indefinite.
  */
-int flow_serve_pending(struct thread *t)
+bool flow_serve_pending(struct thread *t, struct timespec *timeout)
 {
         struct rate_limit *rl = &t->rl;
         int64_t ms = t->opts->nonblocking ? 10 : -1;
@@ -234,7 +238,9 @@ int flow_serve_pending(struct thread *t)
                 }
                 run_ready_handlers(t);
         }
-        return ms;
+
+        *timeout = ms_to_timespec(ms);
+        return ms == -1;
 }
 
 /* Check if the flow must be postponed. If yes, record the flow in the array
