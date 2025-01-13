@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <stdint.h>
 #include <time.h>
 
 #include "common.h"
@@ -168,10 +169,9 @@ void flow_create(const struct flow_create_args *args)
 /* Returns true if the deadline for the flow has expired.
  * Takes into account the rounding of the timer.
  */
-static const int ONE_MS = 1000000;
 static int deadline_expired(const struct flow *f)
 {
-        return (f->f_thread->rl.now + ONE_MS/2 >= f->f_next_event);
+        return f->f_thread->rl.now + f->f_thread->rounding_ns >= f->f_next_event;
 }
 
 /* Flows with delayed events are stored unsorted in a per-thread array.
@@ -212,8 +212,11 @@ static void run_ready_handlers(struct thread *t)
  */
 bool flow_serve_pending(struct thread *t, struct timespec *timeout)
 {
+        /* The default timeout of 1m is an upper bound that will shrink if
+         * there are any pending flows.
+         */
+        int64_t ns = t->opts->nonblocking ? 600 * 1000 * 1000 * (int64_t)1000 : -1;
         struct rate_limit *rl = &t->rl;
-        int64_t ms = t->opts->nonblocking ? 10 : -1;
 
         while (rl->pending_count) {
                 /* Take a timestamp, subtract the start time so all times are
@@ -226,12 +229,11 @@ bool flow_serve_pending(struct thread *t, struct timespec *timeout)
                 if (rl->start_time == 0)
                         rl->start_time = rl->now;
                 rl->now -= rl->start_time;
-                /* The granularity of the timer is 1ms so round times. */
-                if (rl->now + ONE_MS/2 < rl->next_event) {
+                if (rl->now + t->rounding_ns < rl->next_event) {
                         /* Too early, compute time to next event and break. */
-                        int64_t wait_ms = (rl->next_event + ONE_MS/2 - rl->now)/ONE_MS;
-                        if (ms == -1 || wait_ms < ms) {
-                                ms = wait_ms;
+                        int64_t wait_ns = rl->next_event + t->rounding_ns - rl->now;
+                        if (ns == -1 || wait_ns < ns) {
+                                ns = wait_ns;
                                 rl->sleep_count++;
                         }
                         break;
@@ -239,8 +241,8 @@ bool flow_serve_pending(struct thread *t, struct timespec *timeout)
                 run_ready_handlers(t);
         }
 
-        *timeout = ms_to_timespec(ms);
-        return ms == -1;
+        *timeout = ns_to_timespec(ns);
+        return ns == -1;
 }
 
 /* Check if the flow must be postponed. If yes, record the flow in the array

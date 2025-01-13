@@ -112,6 +112,7 @@ struct thread {
         struct flow **flows;  /* indexed by flow_id(flow) */
         int flow_space;  /* space allocated in *flows */
         poll_wait poll_func;
+        int64_t rounding_ns;
 };
 
 int thread_stats_events(const struct thread *);

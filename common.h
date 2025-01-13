@@ -122,6 +122,15 @@ static inline struct timespec ms_to_timespec(int ms)
         return ts;
 }
 
+static inline struct timespec ns_to_timespec(int64_t ns)
+{
+        struct timespec ts = {
+                .tv_sec = ns / (1000 * 1000 * 1000),
+                .tv_nsec = ns % (1000 * 1000 * 1000),
+        };
+        return ts;
+}
+
 /* Stats are computed wrong with 2 samples or less. Force a minimum value,
  * the larger the better (note, test length is at least 1).
  */
