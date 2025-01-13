@@ -16,6 +16,7 @@
 
 #include <errno.h>
 #include <sched.h>
+#include <stdint.h>
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
 
@@ -373,12 +374,18 @@ void start_worker_threads(struct options *opts, struct callbacks *cb,
         if (s != 0)
                 LOG_FATAL(cb, "pthread_attr_init: %s", strerror(s));
 
-        /* Use epoll_pwait2 if available. */
+        /* Use epoll_pwait2 if available. When using epoll_pwait2 we work at
+         * nanosecond granularity, so no rounding is needed. But when falling
+         * back to regular epoll_wait we round to the nearest millisecond via a
+         * 0.5ms offset.
+         */
+        int64_t rounding_ns = 500000;
         poll_wait poll_func = neper_epoll_wait;
         struct epoll_event events;
         epoll_pwait2(-1, &events, 0, NULL, NULL); /* Sets EINVAL or ENOSYS. */
         if (errno != ENOSYS) {
                 poll_func = neper_epoll_pwait2;
+                rounding_ns = 0;
         }
 
         for (i = 0; i < opts->num_threads; i++) {
@@ -409,6 +416,7 @@ void start_worker_threads(struct options *opts, struct callbacks *cb,
                 t[i].loop_init_c = loop_init_c;
                 t[i].loop_init_m = loop_init_m;
                 t[i].poll_func = poll_func;
+                t[i].rounding_ns = rounding_ns;
 
 
                 t[i].flows = NULL;
