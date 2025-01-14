@@ -20,5 +20,6 @@
 void parse_all_samples(const char *arg, void *out, struct callbacks *cb);
 void parse_max_pacing_rate(const char *arg, void *out, struct callbacks *cb);
 void parse_unit(const char *arg, void *out, struct callbacks *);
+void parse_duration(const char *arg, void *out, struct callbacks *cb);
 
 #endif
