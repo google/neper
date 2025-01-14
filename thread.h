@@ -66,6 +66,22 @@ struct rate_limit {
         uint64_t reschedule_count;      /* stats: rescheduled entries */
         int pending_count;              /* entries in pending_flows */
         struct flow **pending_flows;    /* size is flow_count */
+
+        /* noburst enforces an interval between transactions. Unlike delay,
+         * which simply delays the next send, noburst rate limits transactions.
+         *
+         * The first flow in each thread is offset based on the thread index.
+         * Subsequent flows are offset by intervals based on the number of
+         * threads. This ensures threads stagger and interleave the first
+         * transaction of each flow. For example, 2 threads running 4 flows will
+         * run in the order (t0,f0), (t1, f1), (t0, f2), (t1, f3) with the
+         * noburst interval between each.
+         *
+         * When transactions complete, the flow's f_next_event is scheduled
+         * based on the per-thread next_noburst_slot. This lets noburst act as a
+         * global rate limit, but avoids sharing information between threads.
+         */
+        uint64_t next_noburst_slot;
 };
 
 /* Store per-thread io stats */
@@ -112,11 +128,20 @@ struct thread {
         struct flow **flows;  /* indexed by flow_id(flow) */
         int flow_space;  /* space allocated in *flows */
         poll_wait poll_func;
-        int64_t rounding_ns;
+        int64_t rounding_ns; /* used to round to millisecond granularity */
+        /* The duration between sends on a thread when using noburst. */
+        int64_t gap_ns;
 };
 
 int thread_stats_events(const struct thread *);
 int thread_stats_snaps(const struct thread *);
+void thread_init_noburst(struct thread *);
+
+/* Reserves and returns the next available timeslot based on the noburst rate
+ * limit. Successive calls return successive time slots.
+ */
+int64_t thread_next_slot(struct thread *);
+
 
 struct neper_pq *thread_stats_pq(struct thread *);
 

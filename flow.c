@@ -254,21 +254,27 @@ int flow_postpone(struct flow *f)
         struct thread *t = f->f_thread;
 
         if (deadline_expired(f)) {
-                /* can serve the flow now, update next deadline */
-                f->f_next_event += t->opts->delay;
-        } else {
-                struct rate_limit *rl = &t->rl;
-                /* flow must be delayed, record in the array, update next
-                 * event for the thread, and disable epoll on this fd.
-                 */
-                if (f->f_next_event < rl->next_event)
-                        rl->next_event = f->f_next_event;
-                rl->pending_flows[rl->pending_count++] = f;
-                rl->delay_count++;
-                flow_mod(f, f->f_handler, 0, true); /* disable epoll */
-                return true;
-        };
-        return false;
+                /* Can serve the flow now, update next deadline. Only one of
+                 * delay or noburst can be set. */
+                if (t->opts->delay) {
+                        flow_update_next_event(f, t->opts->delay);
+                } else {
+                        f->f_next_event = thread_next_slot(t);
+                }
+
+                return false;
+        }
+
+        struct rate_limit *rl = &t->rl;
+        /* flow must be delayed, record in the array, update next
+         * event for the thread, and disable epoll on this fd.
+         */
+        if (f->f_next_event < rl->next_event)
+                rl->next_event = f->f_next_event;
+        rl->pending_flows[rl->pending_count++] = f;
+        rl->delay_count++;
+        flow_mod(f, f->f_handler, 0, true); /* disable epoll */
+        return true;
 }
 
 void flow_delete(struct flow *f)
@@ -279,12 +285,17 @@ void flow_delete(struct flow *f)
                 thread_clear_flow_or_die(f->f_thread, f);
         }
 
-/* TODO: need to free the stat struct here for crr tests */
+        /* TODO: need to free the stat struct here for crr tests */
         free(f->f_opaque);
         /* Right now the test is always false, but let's leave it in case
-         * we want to implement indipendent per-flow buffers.
+         * we want to implement independent per-flow buffers.
          */
         if (f->f_mbuf != f->f_thread->f_mbuf)
                 free(f->f_mbuf);
         free(f);
+}
+
+void flow_update_next_event(struct flow *f, uint64_t duration)
+{
+        f->f_next_event += duration;
 }

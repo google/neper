@@ -182,6 +182,23 @@ static int thread_stats_flows(const struct thread *ts)
         return num_flows;
 }
 
+void thread_init_noburst(struct thread *t)
+{
+        int i;
+
+        t->rl.next_noburst_slot = t->opts->noburst * t->index;
+        for (i = 0; i < t->flow_count; i++) {
+                flow_update_next_event(t->flows[i], thread_next_slot(t));
+        }
+}
+
+int64_t thread_next_slot(struct thread *t)
+{
+        int64_t ret = t->rl.next_noburst_slot;
+        t->rl.next_noburst_slot += t->gap_ns;
+        return ret;
+}
+
 /*
  * Create a priority queue, fill it with all stats structs across all threads,
  * return it to the caller.
@@ -417,15 +434,18 @@ void start_worker_threads(struct options *opts, struct callbacks *cb,
                 t[i].loop_init_m = loop_init_m;
                 t[i].poll_func = poll_func;
                 t[i].rounding_ns = rounding_ns;
+                t[i].gap_ns = t->opts->noburst * t->opts->num_threads;
 
 
                 t[i].flows = NULL;
                 t[i].flow_space = 0;
+
                 /* support for rate limited flows */
                 t[i].rl.pending_flows = calloc_or_die(t[i].flow_limit,
                                               sizeof(struct flow *), t->cb);
                 t[i].rl.pending_count = 0;
                 t[i].rl.next_event = ~0ULL;
+                t[i].rl.next_noburst_slot = 0;
 
                 s = pthread_create(&t[i].id, &attr, thread_func, &t[i]);
                 if (s != 0)
@@ -553,7 +573,7 @@ int run_main_thread(struct options *opts, struct callbacks *cb,
         if (opts->stime_use_proc)
                 set_getrusage_enhanced(opts->stime_use_proc, opts->num_threads);
 
-        if (opts->delay)
+        if (opts->delay || opts->noburst)
                 prctl(PR_SET_TIMERSLACK, 1UL);
 
         pthread_cond_t loop_init_c = PTHREAD_COND_INITIALIZER;

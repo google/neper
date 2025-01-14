@@ -58,5 +58,7 @@ struct flow_create_args {
 
 void flow_create(const struct flow_create_args *);
 void flow_delete(struct flow *);
+/* Adds duration to f's next event time. */
+void flow_update_next_event(struct flow *f, uint64_t duration);
 
 #endif

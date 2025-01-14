@@ -60,14 +60,18 @@ void *loop(struct thread *t)
                 pthread_cond_wait(t->loop_init_c, t->loop_init_m);
         t->fn->fn_loop_init(t);
         (*t->loop_inited)++;
+
+        /* Support noburst offsets. This has to happen after fn_loop_init, which
+         * creates flows and assigns them a per-thread f_id.
+         */
+        if (opts->noburst) {
+                thread_init_noburst(t);
+        }
+
         pthread_cond_broadcast(t->loop_init_c);
         pthread_mutex_unlock(t->loop_init_m);
 
         events = calloc_or_die(opts->maxevents, sizeof(*events), t->cb);
-        /* support for rate limited flows */
-        t->rl.pending_flows = calloc_or_die(t->flow_limit, sizeof(struct flow *), t->cb);
-        t->rl.next_event = ~0ULL; /* no pending timeouts */
-        t->rl.pending_count = 0; /* no pending flows */
         pthread_barrier_wait(t->ready);
         while (!t->stop) {
                 /* Serve pending event, compute timeout to next event */
