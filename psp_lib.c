@@ -223,7 +223,7 @@ void psp_pre_connect(struct thread *t, int s, struct addrinfo *ai)
         LOG_INFO(t->cb, "waiting for km reply");
         count = read(kmfd, &resp, sizeof(resp));
         if (count == 0) {
-		LOG_FATAL(t->cb, "EOF on key management socket");
+                LOG_FATAL(t->cb, "EOF on key management socket");
         } else if (count != sizeof(resp)) {
                 LOG_FATAL(t->cb, "Short read of key reply");
         }

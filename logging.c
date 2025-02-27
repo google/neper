@@ -214,23 +214,23 @@ static void logtonull()
 
 void logging_init(struct callbacks *cb, int argc, char **argv)
 {
-	/*
-	 * Quickly scan options, if we have --logtostderr or --nolog,
-	 * no need to create a logfile.
-	 */
-	int i;
-	for (i = 1; i < argc; i++) {
-		if (!strcmp(argv[i], "--logtostderr")) {
-			log_file = stderr;
-			break;
-		}
-		if (!strcmp(argv[i], "--nolog")) {
-			logtonull();
-			break;
-		}
-	}
-	if (!log_file)
-		open_log();
+        /*
+         * Quickly scan options, if we have --logtostderr or --nolog,
+         * no need to create a logfile.
+         */
+        int i;
+        for (i = 1; i < argc; i++) {
+                if (!strcmp(argv[i], "--logtostderr")) {
+                        log_file = stderr;
+                        break;
+                }
+                if (!strcmp(argv[i], "--nolog")) {
+                        logtonull();
+                        break;
+                }
+        }
+        if (!log_file)
+                open_log();
         cb->logger = NULL;
         cb->print = print;
         cb->log_fatal = log_fatal;

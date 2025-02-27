@@ -58,7 +58,7 @@ static struct neper_snap *snaps_get(const struct neper_snaps *impl, int i)
                         fprintf(stderr, "Test longer than expected (%d), "
                                 "use -l <duration> to extend\n",
                                 i + reported++);
-		}
+                }
                 i = impl->total; /* point to spare element */
         }
 

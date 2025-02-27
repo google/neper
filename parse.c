@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+#include <stdlib.h>
+#include <time.h>
+
 #include "common.h"
 #include "parse.h"
 
@@ -69,4 +72,40 @@ static const struct rate_conversion *parse_unit_internal(const char *str,
 void parse_unit(const char *arg, void *out, struct callbacks *cb)
 {
         *(const struct rate_conversion **)out = parse_unit_internal(arg, cb);
+}
+
+void parse_duration(const char *arg, void *out, struct callbacks *cb)
+{
+        char *suffix;
+        unsigned long *ns = (unsigned long *)out;
+
+        *ns = 0;
+
+        /* Parse the number. */
+        errno = 0;
+        unsigned long val = strtol(arg, &suffix, 0);
+        if (errno != 0)
+                PLOG_FATAL(cb, "strtol");
+        *ns = val;
+
+        /* Parse the suffix. No suffix indicates nanoseconds. */
+        if (suffix == arg)
+                LOG_FATAL(cb, "no duration digits");
+        if (suffix[0] == '\0')
+                return;
+        char *suffixes[] = {
+                "ns",
+                "us",
+                "ms",
+                "s",
+        };
+        int i;
+        for (i = 0; i < sizeof(suffixes)/sizeof(char *); i++) {
+                if (!strcmp(suffix, suffixes[i]))
+                        return;
+                *ns *= 1000;
+        }
+
+        /* Never found a matching suffix. */
+        LOG_FATAL(cb, "invalid suffix %s", suffix);
 }

@@ -315,7 +315,7 @@ static void ctrl_notify_server(int ctrl_conn, int magic, uint64_t result,
         struct hs_msg msg = { .magic = htonl(magic), .type = htonl(CLI_DONE),
                                 .remote_rate = htobe64(result) };
         LOG_INFO(cb, "+++ CLI --> SER   CLI_DONE rate %" PRIu64,
-		 be64toh(msg.remote_rate));
+                 be64toh(msg.remote_rate));
         send_msg(ctrl_conn, &msg, cb, __func__);
         if (shutdown(ctrl_conn, SHUT_WR))
                 PLOG_ERROR(cb, "shutdown");
@@ -427,7 +427,7 @@ void control_plane_wait_until_done(struct control_plane *cp, struct thread *t)
 {
         struct print_io_stats_info s = {
                 .cb = cp->cb, .t = t, .num_threads = cp->opts->num_threads,
-		.start_ns = clock_now(), .prev_ns = clock_now()};
+                .start_ns = clock_now(), .prev_ns = clock_now()};
         if (cp->opts->client) {
                 if (cp->opts->test_length > 0) {
                         signal(SIGALRM, sig_alarm_handler);
@@ -484,7 +484,7 @@ void control_plane_stop(struct control_plane *cp)
                 if (recv_msg(cp->ctrl_conn, &msg, cp->cb, __func__))
                         LOG_FATAL(cp->cb, "Final handshake mismatch");
                 LOG_INFO(cp->cb, "+++ CLI <-- SER   SER_BYE rate %" PRIu64,
-			 be64toh(msg.remote_rate));
+                         be64toh(msg.remote_rate));
                 ((struct options *)cp->opts)->remote_rate = be64toh(msg.remote_rate);
                 do_close(cp->ctrl_conn);
         } else {

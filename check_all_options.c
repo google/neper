@@ -19,7 +19,7 @@
 
 void check_options_common(struct options *opts, struct callbacks *cb)
 {
-	FILE *f;
+        FILE *f;
 
         /* Check the options shared by ALL main programs */
         CHECK(cb, !(opts->logtostderr && opts->nolog),
@@ -40,14 +40,14 @@ void check_options_common(struct options *opts, struct callbacks *cb)
               "local_hosts may only be set for clients.");
         CHECK(cb, opts->interval > 0,
               "Interval must be positive.");
-	if ((f = fopen(PROCFILE_SOMAXCONN, "r")) != NULL) {
-		int result = 0;
-		if (fscanf(f, "%d", &result) != 1)
-			PLOG_FATAL(cb, "fscanf");
-		fclose(f);
-		CHECK(cb, opts->listen_backlog <= result,
-		      "listen() backlog cannot exceed " PROCFILE_SOMAXCONN);
-	}
+        if ((f = fopen(PROCFILE_SOMAXCONN, "r")) != NULL) {
+                int result = 0;
+                if (fscanf(f, "%d", &result) != 1)
+                        PLOG_FATAL(cb, "fscanf");
+                fclose(f);
+                CHECK(cb, opts->listen_backlog <= result,
+                      "listen() backlog cannot exceed " PROCFILE_SOMAXCONN);
+        }
         CHECK(cb, opts->maxevents >= 1,
               "Number of epoll events must be positive.");
         CHECK(cb, opts->max_pacing_rate >= 0,
@@ -115,11 +115,11 @@ void check_options_udp_stream(struct options *opts, struct callbacks *cb)
 
 void check_options_psp_common(struct options *opts, struct callbacks *cb)
 {
-	if (opts->client) {
-		CHECK(cb, opts->local_hosts != NULL,
-		      "PSP client requires local IP (-L) for device lookup.");
-	} else {
-		CHECK(cb, opts->host != NULL,
-		      "PSP server requires server IP (-H) for device lookup.");
-	}
+        if (opts->client) {
+                CHECK(cb, opts->local_hosts != NULL,
+                      "PSP client requires local IP (-L) for device lookup.");
+        } else {
+                CHECK(cb, opts->host != NULL,
+                      "PSP server requires server IP (-H) for device lookup.");
+        }
 }

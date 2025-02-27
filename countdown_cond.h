@@ -56,39 +56,39 @@
  */
 
 struct countdown_cond {
-	int value;
-	int wait;
+        int value;
+        int wait;
 };
 
 static inline void countdown_cond_init(struct countdown_cond *cc, int v)
 {
-	 cc->value = v;
-	 cc->wait = v;
+        cc->value = v;
+        cc->wait = v;
 }
 
 static inline int countdown_cond_dec(const struct countdown_cond *cc)
 {
-	 return __sync_add_and_fetch((int *)&cc->value, -1);
+        return __sync_add_and_fetch((int *)&cc->value, -1);
 }
 
 static inline int countdown_cond_commit(//struct callbacks *cb,
-				    const struct countdown_cond *cc)
+                                    const struct countdown_cond *cc)
 {
-	int value = __sync_add_and_fetch((int *)&cc->wait, -1);
+        int value = __sync_add_and_fetch((int *)&cc->wait, -1);
 
-	if (value == 0)
-		futex(&cc->wait, FUTEX_WAKE, INT_MAX, NULL, NULL, 0);
-	if (value >= 0)
-		return value;
+        if (value == 0)
+                futex(&cc->wait, FUTEX_WAKE, INT_MAX, NULL, NULL, 0);
+        if (value >= 0)
+                return value;
 
-	//PLOG_FATAL(cb, "countdown_inc() value underflow %d", value);
-	return -1;
+        //PLOG_FATAL(cb, "countdown_inc() value underflow %d", value);
+        return -1;
 }
 
 static inline void countdown_cond_wait(struct countdown_cond *cc)
 {
-	while (cc->wait > 0)
-		futex(&cc->wait, FUTEX_WAIT, cc->value, NULL, NULL, 0);
+        while (cc->wait > 0)
+                futex(&cc->wait, FUTEX_WAIT, cc->value, NULL, NULL, 0);
 }
 
 #endif
