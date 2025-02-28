@@ -348,7 +348,10 @@ static void rr_client_state_1(struct flow *f, uint32_t events)
                 if (rr_do_compl(f, &rr->rr_ts_1, &rr->rr_ts_2))
                         return;
 
-                if (!t->opts->delay && rr_do_send(f, EPOLLOUT, rr_fn_send))
+                bool sent = !t->opts->delay
+                                && !t->opts->noburst
+                                && rr_do_send(f, EPOLLOUT, rr_fn_send);
+                if (sent)
                         return;
 
                 flow_mod(f, rr_client_state_0, EPOLLOUT, true);
@@ -363,7 +366,7 @@ static void rr_client_state_0(struct flow *f, uint32_t events)
                 /* data vs time mode and no more transactons to send */
                 return;
         }
-        if (t->opts->delay && flow_postpone(f))
+        if ((t->opts->delay || t->opts->noburst) && flow_postpone(f))
                 return;
         if (rr_do_send(f, events, rr_fn_send))
                 flow_mod(f, rr_client_state_1, EPOLLIN, true);

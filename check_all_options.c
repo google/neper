@@ -99,6 +99,11 @@ void check_options_tcp_crr(struct options *opts, struct callbacks *cb)
 
 void check_options_tcp_rr(struct options *opts, struct callbacks *cb)
 {
+        /* Noburst-specific flags. */
+        if (opts->noburst > 0) {
+                CHECK(cb, opts->delay == 0,
+                      "noburst cannot be set at the same time as delay");
+        }
 }
 
 void check_options_tcp_stream(struct options *opts, struct callbacks *cb)

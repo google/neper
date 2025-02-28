@@ -14,7 +14,10 @@
  * limitations under the License.
  */
 
+#include <errno.h>
 #include <sched.h>
+#include <stdint.h>
+#include <sys/epoll.h>
 #include <sys/eventfd.h>
 
 #include "common.h"
@@ -179,6 +182,23 @@ static int thread_stats_flows(const struct thread *ts)
         return num_flows;
 }
 
+void thread_init_noburst(struct thread *t)
+{
+        int i;
+
+        t->rl.next_noburst_slot = t->opts->noburst * t->index;
+        for (i = 0; i < t->flow_count; i++) {
+                flow_update_next_event(t->flows[i], thread_next_slot(t));
+        }
+}
+
+int64_t thread_next_slot(struct thread *t)
+{
+        int64_t ret = t->rl.next_noburst_slot;
+        t->rl.next_noburst_slot += t->gap_ns;
+        return ret;
+}
+
 /*
  * Create a priority queue, fill it with all stats structs across all threads,
  * return it to the caller.
@@ -331,6 +351,20 @@ static void get_numa_allowed_cpus(struct callbacks *cb, int numa_idx,
 }
 #endif
 
+int neper_epoll_wait(int epfd, struct epoll_event *events, int maxevents,
+                        struct timespec *timeout)
+{
+        int ms = timeout ? timespec_to_ms(timeout) : -1;
+        return epoll_wait(epfd, events, maxevents, ms);
+}
+
+int neper_epoll_pwait2(int epfd, struct epoll_event *events, int maxevents,
+                        struct timespec *timeout)
+{
+        return epoll_pwait2(
+            epfd, events, maxevents, timeout, NULL /* sigmask */);
+}
+
 void start_worker_threads(struct options *opts, struct callbacks *cb,
                           struct thread *t, void *(*thread_func)(void *),
                           const struct neper_fn *fn,
@@ -356,6 +390,20 @@ void start_worker_threads(struct options *opts, struct callbacks *cb,
         s = pthread_attr_init(&attr);
         if (s != 0)
                 LOG_FATAL(cb, "pthread_attr_init: %s", strerror(s));
+
+        /* Use epoll_pwait2 if available. When using epoll_pwait2 we work at
+         * nanosecond granularity, so no rounding is needed. But when falling
+         * back to regular epoll_wait we round to the nearest millisecond via a
+         * 0.5ms offset.
+         */
+        int64_t rounding_ns = 500000;
+        poll_wait poll_func = neper_epoll_wait;
+        struct epoll_event events;
+        epoll_pwait2(-1, &events, 0, NULL, NULL); /* Sets EINVAL or ENOSYS. */
+        if (errno != ENOSYS) {
+                poll_func = neper_epoll_pwait2;
+                rounding_ns = 0;
+        }
 
         for (i = 0; i < opts->num_threads; i++) {
                 t[i].index = i;
@@ -384,15 +432,20 @@ void start_worker_threads(struct options *opts, struct callbacks *cb,
                 t[i].loop_inited = loop_inited;
                 t[i].loop_init_c = loop_init_c;
                 t[i].loop_init_m = loop_init_m;
+                t[i].poll_func = poll_func;
+                t[i].rounding_ns = rounding_ns;
+                t[i].gap_ns = t->opts->noburst * t->opts->num_threads;
 
 
                 t[i].flows = NULL;
                 t[i].flow_space = 0;
+
                 /* support for rate limited flows */
                 t[i].rl.pending_flows = calloc_or_die(t[i].flow_limit,
                                               sizeof(struct flow *), t->cb);
                 t[i].rl.pending_count = 0;
                 t[i].rl.next_event = ~0ULL;
+                t[i].rl.next_noburst_slot = 0;
 
                 s = pthread_create(&t[i].id, &attr, thread_func, &t[i]);
                 if (s != 0)
@@ -520,7 +573,7 @@ int run_main_thread(struct options *opts, struct callbacks *cb,
         if (opts->stime_use_proc)
                 set_getrusage_enhanced(opts->stime_use_proc, opts->num_threads);
 
-        if (opts->delay)
+        if (opts->delay || opts->noburst)
                 prctl(PR_SET_TIMERSLACK, 1UL);
 
         pthread_cond_t loop_init_c = PTHREAD_COND_INITIALIZER;
