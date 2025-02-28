@@ -1,4 +1,5 @@
 *.o
+*.log
 tcp_crr
 tcp_rr
 tcp_stream
