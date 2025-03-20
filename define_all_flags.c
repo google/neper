@@ -121,6 +121,8 @@ struct flags_parser *add_flags_tcp_rr(struct flags_parser *fp)
         DEFINE_FLAG(fp, unsigned long, delay,           0,       'D', "Delay between each send()/write() in ns (default), us, ms, or s");
         DEFINE_FLAG_PARSER(fp,         delay, parse_duration);
         DEFINE_FLAG(fp, bool,          async_connect,   false,   0,  "use non blocking connect");
+        DEFINE_FLAG(fp, unsigned long, noburst,         0,       0, "noburst interval in ns (default), us, ms, or s");
+        DEFINE_FLAG_PARSER(fp,         noburst, parse_duration);
 
         /* Return the updated fp */
         return (fp);
