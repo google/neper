@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <time.h>
 
 struct flow;  /* note: struct is defined opaquely within flow.c */
 struct neper_stat;
@@ -38,7 +39,9 @@ struct neper_stat *flow_stat(const struct flow *);
 struct thread     *flow_thread(const struct flow *);
 
 int flow_postpone(struct flow *);
-int flow_serve_pending(struct thread *t);  /* process postponed events */
+bool flow_serve_pending(
+                struct thread *t,
+                struct timespec *timeout); /* process postponed events */
 void flow_event(const struct epoll_event *);  /* process one epoll event */
 void flow_mod(struct flow *, flow_handler, uint32_t events, bool or_die);
 void flow_reconnect(struct flow *, flow_handler, uint32_t events);
@@ -55,5 +58,7 @@ struct flow_create_args {
 
 void flow_create(const struct flow_create_args *);
 void flow_delete(struct flow *);
+/* Adds duration to f's next event time. */
+void flow_update_next_event(struct flow *f, uint64_t duration);
 
 #endif

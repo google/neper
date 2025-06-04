@@ -124,6 +124,11 @@ struct options {
         int response_size;
         struct percentiles percentiles;
 
+        /* The nanosecond interval enforced between successive transactions.
+         * This effectively imposes a global rate limit.
+         */
+        unsigned long noburst;
+
         /* tcp_crr */
         bool nostats;
 };

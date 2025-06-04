@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+#include <stdint.h>
+#include <time.h>
+
 #include "common.h"
 #include "flow.h"
 #include "socket.h"
@@ -166,10 +169,9 @@ void flow_create(const struct flow_create_args *args)
 /* Returns true if the deadline for the flow has expired.
  * Takes into account the rounding of the timer.
  */
-static const int ONE_MS = 1000000;
 static int deadline_expired(const struct flow *f)
 {
-        return (f->f_thread->rl.now + ONE_MS/2 >= f->f_next_event);
+        return f->f_thread->rl.now + f->f_thread->rounding_ns >= f->f_next_event;
 }
 
 /* Flows with delayed events are stored unsorted in a per-thread array.
@@ -205,11 +207,16 @@ static void run_ready_handlers(struct thread *t)
 
 /* Serve pending eligible flows, and return the number of milliseconds to
  * the next scheduled event. To be called before blocking in the main loop.
+ *
+ * Returns true iff the timeout should be indefinite.
  */
-int flow_serve_pending(struct thread *t)
+bool flow_serve_pending(struct thread *t, struct timespec *timeout)
 {
+        /* The default timeout of 1m is an upper bound that will shrink if
+         * there are any pending flows.
+         */
+        int64_t ns = t->opts->nonblocking ? 600 * 1000 * 1000 * (int64_t)1000 : -1;
         struct rate_limit *rl = &t->rl;
-        int64_t ms = t->opts->nonblocking ? 10 : -1;
 
         while (rl->pending_count) {
                 /* Take a timestamp, subtract the start time so all times are
@@ -222,19 +229,20 @@ int flow_serve_pending(struct thread *t)
                 if (rl->start_time == 0)
                         rl->start_time = rl->now;
                 rl->now -= rl->start_time;
-                /* The granularity of the timer is 1ms so round times. */
-                if (rl->now + ONE_MS/2 < rl->next_event) {
+                if (rl->now + t->rounding_ns < rl->next_event) {
                         /* Too early, compute time to next event and break. */
-                        int64_t wait_ms = (rl->next_event + ONE_MS/2 - rl->now)/ONE_MS;
-                        if (ms == -1 || wait_ms < ms) {
-                                ms = wait_ms;
+                        int64_t wait_ns = rl->next_event + t->rounding_ns - rl->now;
+                        if (ns == -1 || wait_ns < ns) {
+                                ns = wait_ns;
                                 rl->sleep_count++;
                         }
                         break;
                 }
                 run_ready_handlers(t);
         }
-        return ms;
+
+        *timeout = ns_to_timespec(ns);
+        return ns == -1;
 }
 
 /* Check if the flow must be postponed. If yes, record the flow in the array
@@ -246,21 +254,27 @@ int flow_postpone(struct flow *f)
         struct thread *t = f->f_thread;
 
         if (deadline_expired(f)) {
-                /* can serve the flow now, update next deadline */
-                f->f_next_event += t->opts->delay;
-        } else {
-                struct rate_limit *rl = &t->rl;
-                /* flow must be delayed, record in the array, update next
-                 * event for the thread, and disable epoll on this fd.
-                 */
-                if (f->f_next_event < rl->next_event)
-                        rl->next_event = f->f_next_event;
-                rl->pending_flows[rl->pending_count++] = f;
-                rl->delay_count++;
-                flow_mod(f, f->f_handler, 0, true); /* disable epoll */
-                return true;
-        };
-        return false;
+                /* Can serve the flow now, update next deadline. Only one of
+                 * delay or noburst can be set. */
+                if (t->opts->delay) {
+                        flow_update_next_event(f, t->opts->delay);
+                } else {
+                        f->f_next_event = thread_next_slot(t);
+                }
+
+                return false;
+        }
+
+        struct rate_limit *rl = &t->rl;
+        /* flow must be delayed, record in the array, update next
+         * event for the thread, and disable epoll on this fd.
+         */
+        if (f->f_next_event < rl->next_event)
+                rl->next_event = f->f_next_event;
+        rl->pending_flows[rl->pending_count++] = f;
+        rl->delay_count++;
+        flow_mod(f, f->f_handler, 0, true); /* disable epoll */
+        return true;
 }
 
 void flow_delete(struct flow *f)
@@ -271,12 +285,17 @@ void flow_delete(struct flow *f)
                 thread_clear_flow_or_die(f->f_thread, f);
         }
 
-/* TODO: need to free the stat struct here for crr tests */
+        /* TODO: need to free the stat struct here for crr tests */
         free(f->f_opaque);
         /* Right now the test is always false, but let's leave it in case
-         * we want to implement indipendent per-flow buffers.
+         * we want to implement independent per-flow buffers.
          */
         if (f->f_mbuf != f->f_thread->f_mbuf)
                 free(f->f_mbuf);
         free(f);
+}
+
+void flow_update_next_event(struct flow *f, uint64_t duration)
+{
+        f->f_next_event += duration;
 }
