@@ -19,6 +19,7 @@
 #include <stdint.h>
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
+#include <unistd.h>
 
 #include "common.h"
 #include "control_plane.h"
@@ -358,12 +359,14 @@ int neper_epoll_wait(int epfd, struct epoll_event *events, int maxevents,
         return epoll_wait(epfd, events, maxevents, ms);
 }
 
+#ifdef __NR_epoll_pwait2
 int neper_epoll_pwait2(int epfd, struct epoll_event *events, int maxevents,
                         struct timespec *timeout)
 {
         return epoll_pwait2(
             epfd, events, maxevents, timeout, NULL /* sigmask */);
 }
+#endif
 
 void start_worker_threads(struct options *opts, struct callbacks *cb,
                           struct thread *t, void *(*thread_func)(void *),
@@ -398,12 +401,14 @@ void start_worker_threads(struct options *opts, struct callbacks *cb,
          */
         int64_t rounding_ns = 500000;
         poll_wait poll_func = neper_epoll_wait;
+#ifdef __NR_epoll_pwait2
         struct epoll_event events;
         epoll_pwait2(-1, &events, 0, NULL, NULL); /* Sets EINVAL or ENOSYS. */
         if (errno != ENOSYS) {
                 poll_func = neper_epoll_pwait2;
                 rounding_ns = 0;
         }
+#endif
 
         for (i = 0; i < opts->num_threads; i++) {
                 t[i].index = i;
