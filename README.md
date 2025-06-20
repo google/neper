@@ -422,6 +422,69 @@ be insignificant.  However, the keys are case sensitive.
     throughput_units
     throughput
 
+## Running in Kubernetes
+
+When running `neper` in Kubernetes for network performance testing, it is important to ensure that the client and server pods are running on different nodes. This provides a more realistic network path and avoids the test being skewed by the node's internal loopback traffic.
+
+For quick, ad-hoc tests, you can use `kubectl run` to launch the server and client pods directly, using a `nodeSelector` to force them onto specific nodes.
+For more permanent or complex testing scenarios, it is recommended to use more advanced Kubernetes capabilities by using `Deployments` and `Services`.
+
+### Identify Your Nodes
+
+First, list the nodes in your cluster to choose where to place the server and client pods.
+
+    kubectl get nodes
+
+You will see an output with your node names, like `node-1` and `node-2`.
+
+### Launch the neper Server
+
+Launch the server pod on one of your nodes (e.g., node-1). The --overrides flag is used here to inject the nodeSelector into the pod specification.
+
+    kubectl run neper-server --image=ghcr.io/google/neper:stable \
+    --command \
+    --overrides='{"apiVersion": "v1", "spec": {"nodeSelector": { "kubernetes.io/hostname": "node-1" }}}' \
+    -- tcp_rr
+
+### Launch the neper Client
+
+Next, get the IP address of the server pod you just created.
+
+    SERVER_IP=$(kubectl get pod neper-server -o jsonpath='{.status.podIP}')
+
+Now, launch the client pod on a different node (e.g., node-2), and pass the server's IP address to it using the -H flag.
+
+    kubectl run neper-client --image=ghcr.io/google/neper:stable \
+    --command \
+    --overrides='{"apiVersion": "v1", "spec": {"nodeSelector": { "kubernetes.io/hostname": "node-2" }}}' \
+    -- tcp_rr -c -H $SERVER_IP
+
+### View the Results
+
+The Pods will run the tests and finish once they are completed:
+
+    kubectl get pods
+    NAME              READY   STATUS      RESTARTS      AGE
+    neper-client      0/1     Completed   1 (18s ago)   31s
+    neper-server      0/1     Completed   1 (18s ago)   2m37s
+
+You can now tail the logs of the client pod to see the performance test results in real-time. The client pod will automatically exit when the test is complete.
+
+    kubectl logs -f neper-client
+
+### Interacting with the Pods
+
+You can also open an interactive shell for more exploratory or advanced testing. For example, to get a shell into a client pod:
+
+    kubectl run -it neper-client --image=ghcr.io/google/neper:stable \
+    --command \
+    --overrides='{"apiVersion": "v1", "spec": {"nodeSelector": { "kubernetes.io/hostname": "node-2" }}}' \
+    -- sh
+
+When you are finished, you can delete the pods:
+
+    kubectl delete pod neper-server neper-client
+
 ## Contribution guidelines
 
 * C99, avoid compiler-specific extensions.
