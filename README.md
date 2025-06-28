@@ -422,6 +422,14 @@ be insignificant.  However, the keys are case sensitive.
     throughput_units
     throughput
 
+## Compile Neper
+
+To compile `neper`, run `make` or `make all` on your CLI. This will create all the eight binaries, `tcp_rr`, `tcp_stream`, `tcp_crr`, `udp_rr`, `udp_stream`, `psp_stream`, `psp_crr` and `psp_rr` for you.
+
+You can enable the use of `epoll_pwait2()` by passing defination `-DHAVE_EPOLL_PWAIT2` under `CFLAGS` of `Makefile`. Before enabling it make sure that your libc has `epoll_pwait2()` support.
+
+To build a docker image, run `make image` from your CLI.
+
 ## Running in Kubernetes
 
 When running `neper` in Kubernetes for network performance testing, it is important to ensure that the client and server pods are running on different nodes. This provides a more realistic network path and avoids the test being skewed by the node's internal loopback traffic.
