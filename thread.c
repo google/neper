@@ -19,6 +19,7 @@
 #include <stdint.h>
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
+#include <sys/ioctl.h>
 #include <unistd.h>
 
 #include "common.h"
@@ -38,6 +39,20 @@
 #ifndef NO_LIBNUMA
 #include <libnuma/numa.h>
 #include <libnuma/numaint.h>
+#endif
+
+/* support for epoll ioctl has not landed in all libc packages */
+#ifndef EPOLL_IOC_TYPE
+struct epoll_params {
+        __u32 busy_poll_usecs;
+        __u16 busy_poll_budget;
+        __u8 prefer_busy_poll;
+        __u8 pad;
+};
+
+#define EPOLL_IOC_TYPE 0x8A
+#define EPIOCSPARAMS _IOW(EPOLL_IOC_TYPE, 0x01, struct epoll_params)
+#define EPIOCGPARAMS _IOR(EPOLL_IOC_TYPE, 0x02, struct epoll_params)
 #endif
 
 /* Callbacks for the neper_stats sumforeach() function. */
@@ -416,6 +431,11 @@ void start_worker_threads(struct options *opts, struct callbacks *cb,
                 t[i].ai_socktype = fn->fn_type;
                 t[i].ai = copy_addrinfo(ai);
                 t[i].epfd = epoll_create1_or_die(cb);
+                if (opts->busywait >= 1000) {
+                        struct epoll_params params = { opts->busywait / 1000, 64, 1, 0 };
+                        int ret = ioctl(t[i].epfd, EPIOCSPARAMS, &params);
+                        assert(ret == 0); (void)ret;
+                }
                 t[i].stop_efd = eventfd(0, 0);
                 if (t[i].stop_efd == -1)
                         PLOG_FATAL(cb, "eventfd");

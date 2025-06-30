@@ -215,7 +215,8 @@ bool flow_serve_pending(struct thread *t, struct timespec *timeout)
         /* The default timeout of 1m is an upper bound that will shrink if
          * there are any pending flows.
          */
-        int64_t ns = t->opts->nonblocking ? 600 * 1000 * 1000 * (int64_t)1000 : -1;
+        int64_t ns = t->opts->busywait ?:
+                     t->opts->nonblocking ? 600 * 1000 * 1000 * (int64_t)1000 : -1;
         struct rate_limit *rl = &t->rl;
 
         while (rl->pending_count) {
