@@ -43,6 +43,7 @@ struct flags_parser *add_flags_common(struct flags_parser *fp)
         DEFINE_FLAG(fp, bool,         logtostderr,   false,    0,  "Log to stderr");
         DEFINE_FLAG(fp, bool,         nolog,         false,    0,  "No logging");
         DEFINE_FLAG(fp, bool,         nonblocking,   false,    0,  "Make sure syscalls are all nonblocking");
+        DEFINE_FLAG(fp, bool,         optimistic,    false,    0,  "Optimistic I/O (try skipping EPOLLOUT in rr server)");
         DEFINE_FLAG(fp, bool,         freebind,      false,    0,  "Set FREEBIND socket option");
         DEFINE_FLAG(fp, double,       interval,      1.0,     'I', "For how many seconds that a sample is generated");
         DEFINE_FLAG(fp, long long,    max_pacing_rate, 0,     'm', "SO_MAX_PACING_RATE value; use as 64-bit unsigned");

@@ -399,7 +399,7 @@ static void crr_client_state_0(struct flow *f, uint32_t events)
 
 /* The state machine for servers: */
 
-static void rr_server_state_2(struct flow *f, uint32_t events)
+static bool try_rr_server_state_2(struct flow *f, uint32_t events)
 {
         struct rr_state *rr = flow_opaque(f);
         struct thread *t = flow_thread(f);
@@ -412,12 +412,22 @@ static void rr_server_state_2(struct flow *f, uint32_t events)
                         neper_histo_event(histo, 0.0);
                         stat->event(t, stat, 1, false, rr_snapshot);
                 }
-                flow_mod(f, rr_server_state_0, EPOLLIN, false);
+                return true;
         }
+        return false;
+}
+
+static void rr_server_state_2(struct flow *f, uint32_t events)
+{
+        if (try_rr_server_state_2(f, events))
+                flow_mod(f, rr_server_state_0, EPOLLIN, false);
 }
 
 static void rr_server_state_1(struct flow *f)
 {
+        if (flow_thread(f)->opts->optimistic)
+                if (try_rr_server_state_2(f, EPOLLOUT))
+                        return;
         flow_mod(f, rr_server_state_2, EPOLLOUT, false);
 }
 

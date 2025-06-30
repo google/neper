@@ -89,6 +89,7 @@ struct options {
         bool logtostderr;
         bool nolog;
         bool nonblocking;
+        bool optimistic;
         bool freebind;
         bool tcp_fastopen;
         bool skip_rx_copy;
