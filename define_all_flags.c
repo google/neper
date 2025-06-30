@@ -33,6 +33,7 @@ struct flags_parser *add_flags_common(struct flags_parser *fp)
         DEFINE_FLAG(fp, int,          listen_backlog, 128,     0,  "Backlog size for listen()");
         DEFINE_FLAG(fp, int,          suicide_length, 0,      's', "Suicide length in seconds");
         DEFINE_FLAG(fp, int,          source_port,  -1,        0,  "Sender (source) data port. First data stream will use this port, each next stream will use port one larger than previous one. When not specified, kernel assigns free source ports.");
+        DEFINE_FLAG(fp, int,          discard,       0,        0,  "Discard first N samples per thread");
         DEFINE_FLAG(fp, bool,         stime_use_proc,false,   'S', "Use global system+IRQ+SoftIRQ time from /proc/stat in place of getrusage ru_stime value. Should only be used on otherwise idle systems or with high workloads!");
         DEFINE_FLAG(fp, bool,         ipv4,          false,   '4', "Set desired address family to AF_INET");
         DEFINE_FLAG(fp, bool,         ipv6,          false,   '6', "Set desired address family to AF_INET6");
