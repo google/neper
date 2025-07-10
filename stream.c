@@ -30,7 +30,11 @@ static void *stream_alloc(struct thread *t)
         const struct options *opts = t->opts;
 
         if (!t->f_mbuf) {
-                t->f_mbuf = malloc_or_die(opts->buffer_size, t->cb);
+                if (t->opts->hugetlb) {
+                        t->f_mbuf = map_hugetlb_or_die(opts->buffer_size, t->cb);
+                } else {
+                        t->f_mbuf = malloc_or_die(opts->buffer_size, t->cb);
+                }
                 if (opts->enable_write)
                         fill_random(t->f_mbuf, opts->buffer_size);
         }

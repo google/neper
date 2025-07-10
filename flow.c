@@ -15,6 +15,7 @@
  */
 
 #include <stdint.h>
+#include <sys/mman.h>
 #include <time.h>
 
 #include "assert.h"
@@ -306,8 +307,14 @@ void flow_delete(struct flow *f)
          * we want to implement independent per-flow buffers.
          */
         for (int i = 0; i < FLOW_MBUFS; i++) {
-                if (f->f_mbuf[i] != f->f_thread->f_mbuf)
-                        free(f->f_mbuf[i]);
+                if (f->f_mbuf[i] && f->f_mbuf[i] != f->f_thread->f_mbuf) {
+                        if (f->f_thread->opts->hugetlb) {
+                                int size = f->f_thread->opts->buffer_size;
+                                munmap(f->f_mbuf[i], size);
+                        } else {
+                                free(f->f_mbuf[i]);
+                        }
+                }
         }
         free(f);
 }
