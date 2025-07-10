@@ -17,11 +17,14 @@
 #include <stdint.h>
 #include <time.h>
 
+#include "assert.h"
 #include "common.h"
 #include "flow.h"
 #include "socket.h"
 #include "thread.h"
 #include "stats.h"
+
+#define FLOW_MBUFS 2
 
 /*
  * We define the flow struct locally to this file to force outside users to go
@@ -32,7 +35,7 @@ struct flow {
         struct thread * f_thread;   /* owner of this flow */
         flow_handler    f_handler;  /* state machine: current callback */
         void *          f_opaque;   /* state machine: opaque state */
-        void *          f_mbuf;     /* send/recv message buffer */
+        void *          f_mbuf[FLOW_MBUFS]; /* send/recv message buffer */
         int             f_fd;       /* open file descriptor */
         int             f_id;       /* index of this flow within the thread */
 
@@ -55,7 +58,19 @@ int flow_id(const struct flow *f)
 
 void *flow_mbuf(const struct flow *f)
 {
-        return f->f_mbuf;
+        return f->f_mbuf[0];
+}
+
+void *flow_mbuf_n(const struct flow *f, unsigned n)
+{
+        assert(n < FLOW_MBUFS);
+        return f->f_mbuf[n];
+}
+
+void flow_set_mbuf_n(struct flow *f, unsigned n, void *ptr)
+{
+        assert(n < FLOW_MBUFS);
+        f->f_mbuf[n] = ptr;
 }
 
 void *flow_opaque(const struct flow *f)
@@ -134,7 +149,7 @@ void flow_create(const struct flow_create_args *args)
                 /* The next line is a hack. mbuf_alloc implies traffic and */
                 /* traffic implies a flow_id is needed. */
                 f->f_id   = t->flow_count++;
-                f->f_mbuf = args->mbuf_alloc(t);
+                f->f_mbuf[0] = args->mbuf_alloc(t);
         }
         if (args->stat) {
                 f->f_stat = args->stat(f);
@@ -290,8 +305,10 @@ void flow_delete(struct flow *f)
         /* Right now the test is always false, but let's leave it in case
          * we want to implement independent per-flow buffers.
          */
-        if (f->f_mbuf != f->f_thread->f_mbuf)
-                free(f->f_mbuf);
+        for (int i = 0; i < FLOW_MBUFS; i++) {
+                if (f->f_mbuf[i] != f->f_thread->f_mbuf)
+                        free(f->f_mbuf[i]);
+        }
         free(f);
 }
 
