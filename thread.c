@@ -19,6 +19,7 @@
 #include <stdint.h>
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
+#include <sys/mman.h>
 #include <unistd.h>
 
 #include "common.h"
@@ -550,7 +551,10 @@ static void free_worker_threads(int num_threads, struct thread *t)
                 free(t[i].ai);
                 t[i].rusage->fini(t[i].rusage);
                 free(t[i].rl.pending_flows);
-                free(t[i].f_mbuf);
+                if (t->opts->hugetlb)
+                        munmap(t[i].f_mbuf, t->opts->buffer_size);
+                else
+                        free(t[i].f_mbuf);
                 free(t[i].flows);
         }
         free(t);

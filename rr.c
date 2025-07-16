@@ -133,7 +133,11 @@ static void *rr_alloc(struct thread *t)
         len = MAX(opts->request_size, opts->response_size);
         len = MIN(len, opts->buffer_size);
 
-        t->f_mbuf = calloc_or_die(len, sizeof(char), t->cb);
+        if (opts->hugetlb) {
+                t->f_mbuf = map_hugetlb_or_die(len, t->cb);
+        } else {
+                t->f_mbuf = calloc_or_die(len, sizeof(char), t->cb);
+        }
         return t->f_mbuf;
 }
 

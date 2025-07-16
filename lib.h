@@ -115,6 +115,7 @@ struct options {
         bool edge_trigger;
         unsigned long delay;  /* ns, also used in tcp_rr */
         const struct rate_conversion *throughput_opt;
+        bool hugetlb;
 
         unsigned long long local_rate;  /* updated in report */
         unsigned long long remote_rate; /* updated in final msg */

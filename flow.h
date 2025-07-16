@@ -34,6 +34,8 @@ typedef void (*flow_handler)(struct flow *, uint32_t);
 int                flow_fd(const struct flow *);
 int                flow_id(const struct flow *);
 void              *flow_mbuf(const struct flow *);
+void              *flow_mbuf_n(const struct flow *, unsigned);
+void               flow_set_mbuf_n(struct flow *, unsigned, void *);
 void              *flow_opaque(const struct flow *);
 struct neper_stat *flow_stat(const struct flow *);
 struct thread     *flow_thread(const struct flow *);

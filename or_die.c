@@ -16,6 +16,7 @@
 
 #include "common.h"
 #include "or_die.h"
+#include <sys/mman.h>
 
 /* Simple syscall wrappers to be used when errors are fatal to the caller. */
 
@@ -86,6 +87,18 @@ void *malloc_or_die(size_t size, struct callbacks *cb)
         void *ptr = malloc(size);
         if (!ptr)
                 PLOG_FATAL(cb, "malloc");
+        return ptr;
+}
+
+#define ALIGN_UP(x, align_to)   (((x) + ((align_to)-1)) & ~((align_to)-1))
+
+void *map_hugetlb_or_die(size_t size, struct callbacks *cb)
+{
+        void *ptr;
+        ptr = mmap(NULL, ALIGN_UP(size, 2*1024*1024), PROT_READ | PROT_WRITE,
+                   MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB, -1, 0);
+        if (ptr == MAP_FAILED)
+                PLOG_FATAL(cb, "mmap(MAP_HUGETLB)");
         return ptr;
 }
 
