@@ -337,8 +337,19 @@ ssize_t flow_recv_zerocopy(struct flow *f, void *copybuf, size_t copybuf_len) {
         socklen_t zc_len = sizeof(zc);
         int result;
 
+        /* Setup both the mmap address and extra buffer for bytes that aren't
+         * zerocopy-able.
+         */
         zc.address = (__u64)f->f_rx_zerocopy_buffer;
         zc.length = copybuf_len; /* Same size used as zerocopy buffer. */
+
+        /* The kernel will effectively use copybuf_len as a hint as to what the
+         * cutoff point between zerocopy and recv is. So passing a large copybuf
+         * causes less zerocopy. Thus we pass just under a page to maximize
+         * zerocopying.
+         */
+        zc.copybuf_address = (__u64)copybuf;
+        zc.copybuf_len = copybuf_len < 4096 ? copybuf_len : 4095;
 
         result = getsockopt(f->f_fd, IPPROTO_TCP, TCP_ZEROCOPY_RECEIVE, &zc,
                             &zc_len);
@@ -361,5 +372,5 @@ ssize_t flow_recv_zerocopy(struct flow *f, void *copybuf, size_t copybuf_len) {
                 madvise(f->f_rx_zerocopy_buffer, zc.length, MADV_DONTNEED);
         }
 
-        return zc.recv_skip_hint + zc.length;
+        return zc.recv_skip_hint + zc.length + zc.copybuf_len;
 }
