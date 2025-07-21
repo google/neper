@@ -357,6 +357,7 @@ ssize_t flow_recv_zerocopy(struct flow *f, void *copybuf, size_t copybuf_len) {
 
         /* Handle zerocopy data. */
         if (zc.length) {
+                flow_thread(f)->io_stats.rx_zc_bytes += zc.length;
                 madvise(f->f_rx_zerocopy_buffer, zc.length, MADV_DONTNEED);
         }
 

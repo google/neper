@@ -90,6 +90,9 @@ struct io_stats {
         uint64_t tx_bytes;
         uint64_t rx_ops;
         uint64_t rx_bytes;
+
+        /* Counters for RX zerocopy */
+        uint64_t rx_zc_bytes;
 };
 
 typedef int (*poll_wait)(int epfd, struct epoll_event *events, int maxevents,

@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-#include <errno.h>
 #include <sched.h>
 #include <stdint.h>
 #include <sys/epoll.h>
@@ -26,6 +25,7 @@
 #include "cpuinfo.h"
 #include "flow.h"
 #include "histo.h"
+#include "logging.h"
 #include "loop.h"
 #include "percentiles.h"
 #include "pq.h"
@@ -660,6 +660,27 @@ int run_main_thread(struct options *opts, struct callbacks *cb,
         int ret = fn->fn_report(ts);
         control_plane_stop(cp);
         control_plane_destroy(cp);
+
+        if (opts->rx_zerocopy) {
+                uint64_t total_rx_zc_bytes = 0;
+                uint64_t total_rx_bytes = 0;
+                uint64_t percent_mmaped;
+
+                for (int i = 0; i < opts->num_threads; i++) {
+                        total_rx_zc_bytes += ts[i].io_stats.rx_zc_bytes;
+                        total_rx_bytes += ts[i].io_stats.rx_bytes;
+                }
+                percent_mmaped = 100 * total_rx_zc_bytes / total_rx_bytes;
+                PRINT(cb, "bytes_mmaped", "%lu", total_rx_zc_bytes);
+                PRINT(cb, "percent_mmaped", "%lu", percent_mmaped);
+                if (percent_mmaped < 10) {
+                        LOG_WARN(cb, "Little traffic is being handled by "
+                                        "mmap. Is your MTU set appropriately "
+                                        "(4KiB + headers), and is your sender "
+                                        "using TX zerocopy (MSG_ZEROCOPY)?\n");
+                }
+        }
+
         PRINT(cb, "local_throughput", "%lld", opts->local_rate);
         PRINT(cb, "remote_throughput", "%lld", opts->remote_rate);
 
