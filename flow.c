@@ -14,14 +14,19 @@
  * limitations under the License.
  */
 
+#include <linux/tcp.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <sys/mman.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "common.h"
 #include "flow.h"
+#include "logging.h"
 #include "socket.h"
-#include "thread.h"
 #include "stats.h"
+#include "thread.h"
 
 /*
  * We define the flow struct locally to this file to force outside users to go

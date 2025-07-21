@@ -14,13 +14,18 @@
  * limitations under the License.
  */
 
-#include <ctype.h>
 #include <fcntl.h>
 #include <netinet/tcp.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/mman.h>
 
 #include "common.h"
-#include "hexdump.h"
-#include "parse.h"
+#include "lib.h"
+#include "logging.h"
+#include "or_die.h"
 
 #define kilo (1000)
 #define kibi (1024)
