@@ -143,6 +143,7 @@ struct flags_parser *add_flags_tcp_stream(struct flags_parser *fp)
         DEFINE_FLAG(fp, unsigned long, delay,           0,       'D', "Nanosecond delay between each send()/write()");
         DEFINE_FLAG(fp, int,           buffer_size,     16384,   'B', "Number of bytes that each read/write uses as the buffer");
         DEFINE_FLAG(fp, bool,          skip_rx_copy,    false,    0,  "Skip kernel->user payload copy on receives");
+        DEFINE_FLAG(fp, bool,          rx_zerocopy,     false,   'z', "Use TCP RX zerocopy");
         DEFINE_FLAG(fp, bool,          enable_read,     false,   'r', "Read from flows? enabled by default for the server");
         DEFINE_FLAG(fp, bool,          enable_write,    false,   'w', "Write to flows? Enabled by default for the client");
         DEFINE_FLAG(fp, bool,          split_bidir ,    false,    0,  "Bidirectional using separate tx/rx sockets");
