@@ -106,7 +106,7 @@ struct flags_parser *add_flags_stream(struct flags_parser *fp)
         DEFINE_FLAG(fp, int,           test_length,     10,      'l', "Test length in seconds");
         DEFINE_FLAG(fp, bool,          edge_trigger,    false,   'E', "Edge-triggered epoll");
         DEFINE_FLAG(fp, bool,          reuseaddr,       false,   'R', "Use SO_REUSEADDR on sockets");
-        DEFINE_FLAG(fp, bool,          zerocopy,        false,   'Z', "Set MSG_ZEROCOPY when sending");
+        DEFINE_FLAG_NAMED(fp, bool,    tx_zerocopy,     false, "zerocopy", 'Z', "Set MSG_ZEROCOPY when sending");
         DEFINE_FLAG(fp, const struct rate_conversion *, throughput_opt, neper_units_mb_pointer_hack, 0, "Units to display for throughput");
         DEFINE_FLAG_PARSER(fp,                          throughput_opt, parse_unit);
         DEFINE_FLAG_PRINTER(fp,                         throughput_opt, print_unit);

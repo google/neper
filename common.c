@@ -187,7 +187,7 @@ void set_reuseaddr(int fd, int on, struct callbacks *cb)
                 PLOG_ERROR(cb, "setsockopt(SO_REUSEADDR)");
 }
 
-void set_zerocopy(int fd, int on, struct callbacks *cb)
+void set_tx_zerocopy(int fd, int on, struct callbacks *cb)
 {
 #ifndef SO_ZEROCOPY
 #define SO_ZEROCOPY 60

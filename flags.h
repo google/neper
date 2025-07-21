@@ -39,15 +39,30 @@ void flags_parser_run(struct flags_parser *fp, int argc, char **argv);
 void flags_parser_dump(struct flags_parser *fp);
 void flags_parser_destroy(struct flags_parser *fp);
 
-#define DEFINE_FLAG(FP, TYPE, VAR, DEFAULT_VALUE, SHORT_NAME, USAGE) \
-  do {                                                               \
-    TYPE default_value = DEFAULT_VALUE;                              \
-    struct options *opts = flags_parser_opts(FP);                    \
-    opts->VAR = default_value;                                       \
-    flags_parser_add(FP, SHORT_NAME, #VAR,                           \
-                     USAGE " (default " #DEFAULT_VALUE ")", #TYPE,   \
-                     &opts->VAR);                                    \
-  } while (0)
+/* You probably want DEFINE_FLAG or DEFINE_FLAG_NAMED instead of this. This
+ * macro takes extra arguments -- separating TYPE and TYPESTR -- because the
+ * preprocessor will convert a TYPE of "bool" too "_Bool" *except* in the
+ * specific case where the macro contains #TYPE. This was not fun to debug.
+ */
+#define DEFINE_FLAG_NAMED_TYPED(FP, TYPE, TYPESTR, VAR, DEFAULT_VALUE, NAME,  \
+                SHORT_NAME, USE)                                              \
+        do {                                                                  \
+                TYPE default_value = DEFAULT_VALUE;                           \
+                struct options *opts = flags_parser_opts(FP);                 \
+                opts->VAR = default_value;                                    \
+                flags_parser_add(FP, SHORT_NAME, NAME,                        \
+                                USE " (default " #DEFAULT_VALUE ")", TYPESTR, \
+                                &opts->VAR);                                  \
+        } while (0);
+
+/* DEFINE_FLAG_NAMED is like DEFINE_FLAG, but uses a custom flag name. */
+#define DEFINE_FLAG_NAMED(FP, TYPE, VAR, DEFAULT_VALUE, NAME, SHORT_NAME, USE) \
+        DEFINE_FLAG_NAMED_TYPED(FP, TYPE, #TYPE, VAR, DEFAULT_VALUE, NAME,     \
+                        SHORT_NAME, USE)
+
+#define DEFINE_FLAG(FP, TYPE, VAR, DEFAULT_VALUE, SHORT_NAME, USAGE)       \
+        DEFINE_FLAG_NAMED_TYPED(FP, TYPE, #TYPE, VAR, DEFAULT_VALUE, #VAR, \
+                        SHORT_NAME, USAGE)
 
 #define DEFINE_FLAG_PARSER(FP, VAR, PARSER) do { \
         struct options *opts = flags_parser_opts(FP); \

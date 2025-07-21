@@ -152,7 +152,7 @@ struct addrinfo **parse_local_hosts(const struct options *opts, int n,
 void set_reuseport(int fd, struct callbacks *cb);
 void set_nonblocking(int fd, struct callbacks *cb);
 void set_reuseaddr(int fd, int on, struct callbacks *cb);
-void set_zerocopy(int fd, int on, struct callbacks *cb);
+void set_tx_zerocopy(int fd, int on, struct callbacks *cb);
 void set_freebind(int fd, struct callbacks *cb);
 void set_debug(int fd, int onoff, struct callbacks *cb);
 void set_mark(int fd, int mark, struct callbacks *cb);
