@@ -92,7 +92,8 @@ struct options {
         bool freebind;
         bool tcp_fastopen;
         bool skip_rx_copy;
-        bool zerocopy;
+        bool tx_zerocopy;
+        bool rx_zerocopy;
         bool time_wait;
         double interval;
         long long max_pacing_rate;

@@ -56,9 +56,15 @@ struct flow_create_args {
         struct neper_stat *(*stat)(struct flow *); /* stats callback */
 };
 
-void flow_create(const struct flow_create_args *);
+struct flow *flow_create(const struct flow_create_args *);
 void flow_delete(struct flow *);
 /* Adds duration to f's next event time. */
 void flow_update_next_event(struct flow *f, uint64_t duration);
+
+/* Initialize RX zerocopy state for a flow. */
+void flow_init_rx_zerocopy(struct flow *f, int buffer_size,
+                          struct callbacks *cb);
+/* Perform a zerocopy receive. */
+ssize_t flow_recv_zerocopy(struct flow *f, void *copybuf, size_t copybuf_len);
 
 #endif

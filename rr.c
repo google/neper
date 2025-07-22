@@ -101,7 +101,11 @@ static ssize_t rr_fn_recv(struct flow *f, char *buf, size_t len)
         struct thread *t = flow_thread(f);
         ssize_t ret;
 
-        ret = recv(flow_fd(f), buf, len, 0);
+        if (t->opts->rx_zerocopy) {
+                ret = flow_recv_zerocopy(f, buf, len);
+	} else {
+		ret = recv(flow_fd(f), buf, len, 0);
+	}
         t->io_stats.rx_ops++;
         t->io_stats.rx_bytes += ret > 0 ? ret : 0;
         return ret;

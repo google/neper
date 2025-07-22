@@ -68,6 +68,8 @@ void check_options_tcp(struct options *opts, struct callbacks *cb)
                         "Source ports need to be in the range of 1..0xFFFF. "
                         "Best larger than 1024.");
         }
+        CHECK(cb, !(opts->rx_zerocopy && opts->skip_rx_copy),
+              "TCP RX zerocopy is not supported in conjunction RX copy skip.");
 }
 
 void check_options_udp(struct options *opts, struct callbacks *cb)

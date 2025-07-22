@@ -58,7 +58,7 @@ int main(int argc, char **argv)
 
         if (opts.skip_rx_copy)
                 opts.recv_flags = MSG_TRUNC;
-        if (opts.zerocopy)
+        if (opts.tx_zerocopy)
                 opts.send_flags = MSG_ZEROCOPY;
 
         flags_parser_dump(fp);

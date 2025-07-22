@@ -91,8 +91,13 @@ void stream_handler(struct flow *f, uint32_t events)
         if (events & EPOLLIN)
                 do {
                         do {
-                                n = recv(fd, mbuf, opts->buffer_size,
-                                         opts->recv_flags);
+                                if (t->opts->rx_zerocopy) {
+                                        n = flow_recv_zerocopy(f, mbuf,
+                                                        opts->buffer_size);
+                                } else {
+                                        n = recv(fd, mbuf, opts->buffer_size,
+                                                        opts->recv_flags);
+                                }
                         } while(n == -1 && errno == EINTR);
                         t->io_stats.rx_ops++;
                         t->io_stats.rx_bytes += n > 0 ? n : 0;
@@ -214,5 +219,7 @@ void stream_flow_init(struct thread *t, int fd)
                 .mbuf_alloc = stream_alloc
         };
 
-        flow_create(&args);
+        struct flow *f = flow_create(&args);
+	if (t->opts->rx_zerocopy)
+		flow_init_rx_zerocopy(f, t->opts->buffer_size, t->cb);
 }

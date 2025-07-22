@@ -14,14 +14,19 @@
  * limitations under the License.
  */
 
+#include <linux/tcp.h>
 #include <stdint.h>
+#include <stdlib.h>
+#include <sys/mman.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "common.h"
 #include "flow.h"
+#include "logging.h"
 #include "socket.h"
-#include "thread.h"
 #include "stats.h"
+#include "thread.h"
 
 /*
  * We define the flow struct locally to this file to force outside users to go
@@ -41,6 +46,10 @@ struct flow {
         uint32_t        f_events;   /* pending epoll events */
 
         struct neper_stat *f_stat;
+
+	/* TCP RX zerocopy state. */
+	void *f_rx_zerocopy_buffer;
+	size_t f_rx_zerocopy_buffer_sz;
 };
 
 int flow_fd(const struct flow *f)
@@ -120,7 +129,24 @@ void flow_reconnect(struct flow *f, flow_handler fh, uint32_t events)
         flow_ctl(f, EPOLL_CTL_ADD, fh, events, true);
 }
 
-void flow_create(const struct flow_create_args *args)
+void flow_init_rx_zerocopy(struct flow *f, int buffer_size, struct callbacks *cb)
+{
+        // Use RCVLOWAT to reduce syscall overhead.
+        int rcvlowat = buffer_size;
+        if (setsockopt(f->f_fd, SOL_SOCKET, SO_RCVLOWAT, &rcvlowat,
+                       sizeof(rcvlowat)) == -1)
+                PLOG_FATAL(cb, "setsockopt(SO_RCVLOWAT)");
+
+        // Zerocopy requires mmap'd pages. Each flow has its own pages.
+        f->f_rx_zerocopy_buffer = mmap(NULL, buffer_size, PROT_READ,
+                        MAP_SHARED, f->f_fd, 0);
+        if (f->f_rx_zerocopy_buffer == (void *)-1)
+                PLOG_FATAL(cb, "failed to map RX zerocopy buffer");
+
+        f->f_rx_zerocopy_buffer_sz = buffer_size;
+}
+
+struct flow *flow_create(const struct flow_create_args *args)
 {
         struct thread *t = args->thread;
         struct flow *f = calloc_or_die(1, sizeof(struct flow), t->cb);
@@ -164,6 +190,7 @@ void flow_create(const struct flow_create_args *args)
                 events &= (f->f_id & 1) ? EPOLLOUT : EPOLLIN;
 
         flow_ctl(f, EPOLL_CTL_ADD, args->handler, events, true);
+	return f;
 }
 
 /* Returns true if the deadline for the flow has expired.
@@ -292,10 +319,58 @@ void flow_delete(struct flow *f)
          */
         if (f->f_mbuf != f->f_thread->f_mbuf)
                 free(f->f_mbuf);
+
+        /* Cleanup TCP RX zerocopy. */
+        if (f->f_rx_zerocopy_buffer)
+                munmap(f->f_rx_zerocopy_buffer, f->f_rx_zerocopy_buffer_sz);
+
         free(f);
 }
 
 void flow_update_next_event(struct flow *f, uint64_t duration)
 {
         f->f_next_event += duration;
+}
+
+ssize_t flow_recv_zerocopy(struct flow *f, void *copybuf, size_t copybuf_len) {
+        struct tcp_zerocopy_receive zc = {0};
+        socklen_t zc_len = sizeof(zc);
+        int result;
+
+        /* Setup both the mmap address and extra buffer for bytes that aren't
+         * zerocopy-able.
+         */
+        zc.address = (__u64)f->f_rx_zerocopy_buffer;
+        zc.length = copybuf_len; /* Same size used as zerocopy buffer. */
+
+        /* The kernel will effectively use copybuf_len as a hint as to what the
+         * cutoff point between zerocopy and recv is. So passing a large copybuf
+         * causes less zerocopy. Thus we pass just under a page to maximize
+         * zerocopying.
+         */
+        zc.copybuf_address = (__u64)copybuf;
+        zc.copybuf_len = copybuf_len < 4096 ? copybuf_len : 4095;
+
+        result = getsockopt(f->f_fd, IPPROTO_TCP, TCP_ZEROCOPY_RECEIVE, &zc,
+                            &zc_len);
+        if (result == -1)
+                return result;
+
+        /* Handle overflow data, i.e. bytes that couldn't be zerocopied. */
+        if (zc.recv_skip_hint) {
+                int read_len = zc.recv_skip_hint < copybuf_len ?
+                        zc.recv_skip_hint : copybuf_len;
+                result = read(f->f_fd, copybuf, read_len);
+                if (result < 0)
+                        PLOG_FATAL(f->f_thread->cb, "failed to read extra "
+                                        "bytes");
+        }
+
+        /* Handle zerocopy data. */
+        if (zc.length) {
+                flow_thread(f)->io_stats.rx_zc_bytes += zc.length;
+                madvise(f->f_rx_zerocopy_buffer, zc.length, MADV_DONTNEED);
+        }
+
+        return zc.recv_skip_hint + zc.length + zc.copybuf_len;
 }

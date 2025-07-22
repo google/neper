@@ -51,8 +51,8 @@ static void socket_init_not_established(struct thread *t, int s)
                 set_reuseaddr(s, 1, cb);
         if (opts->freebind)
                 set_freebind(s, cb);
-        if (opts->zerocopy)
-                set_zerocopy(s, 1, cb);
+        if (opts->tx_zerocopy)
+                set_tx_zerocopy(s, 1, cb);
         if (opts->client && !opts->time_wait) {
                 struct linger l;
                 l.l_onoff = 1;
