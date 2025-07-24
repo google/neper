@@ -33,6 +33,8 @@ struct flags_parser *add_flags_common(struct flags_parser *fp)
         DEFINE_FLAG(fp, int,          listen_backlog, 128,     0,  "Backlog size for listen()");
         DEFINE_FLAG(fp, int,          suicide_length, 0,      's', "Suicide length in seconds");
         DEFINE_FLAG(fp, int,          source_port,  -1,        0,  "Sender (source) data port. First data stream will use this port, each next stream will use port one larger than previous one. When not specified, kernel assigns free source ports.");
+        DEFINE_FLAG(fp, int,          discard,       0,        0,  "Discard first N samples per thread");
+        DEFINE_FLAG(fp, int,          busywait,      0,        0,  "Use busywait epoll/napi (nsecs); set to 1-999 for epoll busy only");
         DEFINE_FLAG(fp, bool,         stime_use_proc,false,   'S', "Use global system+IRQ+SoftIRQ time from /proc/stat in place of getrusage ru_stime value. Should only be used on otherwise idle systems or with high workloads!");
         DEFINE_FLAG(fp, bool,         ipv4,          false,   '4', "Set desired address family to AF_INET");
         DEFINE_FLAG(fp, bool,         ipv6,          false,   '6', "Set desired address family to AF_INET6");
@@ -43,6 +45,7 @@ struct flags_parser *add_flags_common(struct flags_parser *fp)
         DEFINE_FLAG(fp, bool,         logtostderr,   false,    0,  "Log to stderr");
         DEFINE_FLAG(fp, bool,         nolog,         false,    0,  "No logging");
         DEFINE_FLAG(fp, bool,         nonblocking,   false,    0,  "Make sure syscalls are all nonblocking");
+        DEFINE_FLAG(fp, bool,         optimistic,    false,    0,  "Optimistic I/O (try skipping EPOLLOUT in rr server)");
         DEFINE_FLAG(fp, bool,         freebind,      false,    0,  "Set FREEBIND socket option");
         DEFINE_FLAG(fp, double,       interval,      1.0,     'I', "For how many seconds that a sample is generated");
         DEFINE_FLAG(fp, long long,    max_pacing_rate, 0,     'm', "SO_MAX_PACING_RATE value; use as 64-bit unsigned");
