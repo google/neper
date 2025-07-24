@@ -15,6 +15,7 @@
  */
 
 #include <linux/tcp.h>
+#include <linux/version.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <sys/mman.h>
@@ -335,6 +336,7 @@ void flow_update_next_event(struct flow *f, uint64_t duration)
 ssize_t flow_recv_zerocopy(struct flow *f, void *copybuf, size_t copybuf_len) {
         struct tcp_zerocopy_receive zc = {0};
         socklen_t zc_len = sizeof(zc);
+        ssize_t n_read;
         int result;
 
         /* Setup both the mmap address and extra buffer for bytes that aren't
@@ -343,6 +345,7 @@ ssize_t flow_recv_zerocopy(struct flow *f, void *copybuf, size_t copybuf_len) {
         zc.address = (__u64)f->f_rx_zerocopy_buffer;
         zc.length = copybuf_len; /* Same size used as zerocopy buffer. */
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 82)
         /* The kernel will effectively use copybuf_len as a hint as to what the
          * cutoff point between zerocopy and recv is. So passing a large copybuf
          * causes less zerocopy. Thus we pass just under a page to maximize
@@ -350,9 +353,10 @@ ssize_t flow_recv_zerocopy(struct flow *f, void *copybuf, size_t copybuf_len) {
          */
         zc.copybuf_address = (__u64)copybuf;
         zc.copybuf_len = copybuf_len < 4096 ? copybuf_len : 4095;
+#endif
 
         result = getsockopt(f->f_fd, IPPROTO_TCP, TCP_ZEROCOPY_RECEIVE, &zc,
-                            &zc_len);
+                        &zc_len);
         if (result == -1)
                 return result;
 
@@ -372,5 +376,9 @@ ssize_t flow_recv_zerocopy(struct flow *f, void *copybuf, size_t copybuf_len) {
                 madvise(f->f_rx_zerocopy_buffer, zc.length, MADV_DONTNEED);
         }
 
-        return zc.recv_skip_hint + zc.length + zc.copybuf_len;
+        n_read = zc.recv_skip_hint + zc.length;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 82)
+        n_read += zc.copybuf_len;
+#endif
+        return n_read;
 }
