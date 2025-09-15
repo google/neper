@@ -233,6 +233,13 @@ void set_tcp_tx_delay(int fd, int delay, struct callbacks *cb)
                 PLOG_ERROR(cb, "setsockopt(TCP_TX_DELAY)");
 }
 
+void set_tcp_no_delay(int fd, struct callbacks *cb)
+{
+        int value = true;
+        if (setsockopt(fd, SOL_TCP, TCP_NODELAY, &value, sizeof(value)))
+                PLOG_ERROR(cb, "setsockopt(TCP_NODELAY)");	
+}
+
 void fill_random(char *buf, int size)
 {
         int fd, chunk, done = 0;
