@@ -150,6 +150,7 @@ struct flags_parser *add_flags_tcp_stream(struct flags_parser *fp)
         DEFINE_FLAG(fp, bool,          split_bidir ,    false,    0,  "Bidirectional using separate tx/rx sockets");
         DEFINE_FLAG(fp, bool,          enable_tcp_maerts,    false,   'M', "Enables TCP_MAERTS test (server writes and client reads). It overrides enable_read, and enable_write");
         DEFINE_FLAG(fp, bool,          async_connect,   false,   0,  "use non blocking connect");
+        DEFINE_FLAG(fp, bool,          no_cork,         false,   0,  "Do not set MSG_MORE when sending over data sockets.");
 
         /* Return the updated fp */
         return (fp);

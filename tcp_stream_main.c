@@ -60,6 +60,8 @@ int main(int argc, char **argv)
                 opts.recv_flags = MSG_TRUNC;
         if (opts.tx_zerocopy)
                 opts.send_flags = MSG_ZEROCOPY;
+        if (!opts.no_cork)
+                opts.send_flags |= MSG_MORE;
 
         flags_parser_dump(fp);
         flags_parser_destroy(fp);
