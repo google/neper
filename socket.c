@@ -327,6 +327,9 @@ int socket_connect_one(struct thread *t, int flags)
         socket_init_not_established(t, s);
         if (t->local_hosts) {
                 int i = (t->flow_first + t->flow_count) % t->num_local_hosts;
+		int enable = 1;
+                setsockopt(s, SOL_IP, IP_BIND_ADDRESS_NO_PORT, &enable,
+                           sizeof(enable));
                 bind_or_die(s, t->local_hosts[i], t->cb);
         }
         if (t->fn->fn_pre_connect) {
