@@ -93,9 +93,8 @@ struct flags_parser *add_flags_rr(struct flags_parser *fp)
         DEFINE_FLAG(fp, struct percentiles,  percentiles,   {},                      'p', "Set reported latency percentiles (list)");
         DEFINE_FLAG_PARSER(fp,               percentiles, percentiles_parse);
         DEFINE_FLAG_PRINTER(fp,              percentiles, percentiles_print);
-        DEFINE_FLAG(fp, int,  test_length, 10,    'l', "Test length, >0 seconds, <0 transactions");
-        DEFINE_FLAG(fp, int,  buffer_size, 65536, 'B', "Number of bytes that each read()/send() can transfer at once");
-        DEFINE_FLAG(fp, bool, reuseaddr,   false, 'R', "Use SO_REUSEADDR on sockets");
+        DEFINE_FLAG(fp, int,                 test_length,   10,                      'l', "Test length, >0 seconds, <0 transactions");
+        DEFINE_FLAG(fp, int,                 buffer_size,   65536,                   'B', "Number of bytes that each read()/send() can transfer at once");
 
         /* Return the updated fp */
         return (fp);
