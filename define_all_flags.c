@@ -72,6 +72,7 @@ struct flags_parser *add_flags_tcp(struct flags_parser *fp)
         DEFINE_FLAG(fp, bool,         pin_numa,       false,  'N', "Pin threads to CPU cores");
 #endif
         DEFINE_FLAG(fp, int,          tcp_tx_delay,   0,      't', "Force usec delay in TCP flows");
+        DEFINE_FLAG(fp, bool,         no_delay,       false,   0,  "Set TCP_NODELAY sockopt on data sockets to disable Nagle's algorithm");
 
         /* Return the updated fp */
         return (fp);
@@ -149,6 +150,7 @@ struct flags_parser *add_flags_tcp_stream(struct flags_parser *fp)
         DEFINE_FLAG(fp, bool,          split_bidir ,    false,    0,  "Bidirectional using separate tx/rx sockets");
         DEFINE_FLAG(fp, bool,          enable_tcp_maerts,    false,   'M', "Enables TCP_MAERTS test (server writes and client reads). It overrides enable_read, and enable_write");
         DEFINE_FLAG(fp, bool,          async_connect,   false,   0,  "use non blocking connect");
+        DEFINE_FLAG(fp, bool,          no_cork,         false,   0,  "Do not set MSG_MORE when sending over data sockets.");
 
         /* Return the updated fp */
         return (fp);

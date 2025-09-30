@@ -61,6 +61,8 @@ static void socket_init_not_established(struct thread *t, int s)
                 if (err)
                         PLOG_ERROR(t->cb, "setsockopt(SO_LINGER)");
         }
+        if (opts->no_delay)
+            set_tcp_no_delay(s, cb);
 }
 
 /*

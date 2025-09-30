@@ -94,6 +94,8 @@ struct options {
         bool skip_rx_copy;
         bool tx_zerocopy;
         bool rx_zerocopy;
+        bool no_delay;
+        bool no_cork;
         bool time_wait;
         double interval;
         long long max_pacing_rate;
