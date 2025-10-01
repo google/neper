@@ -18,7 +18,9 @@
 
 all: binaries
 
-CFLAGS = -std=c99 -Wall -O3 -g -D_GNU_SOURCE -DNO_LIBNUMA
+CFLAGS = -std=c99 -Wall -O3 -g -D_GNU_SOURCE -DNO_LIBNUMA -MMD -MP
+
+deps := $(patsubst %.c, %.d, $(wildcard *.c))
 
 lib := \
 	check_all_options.o \
@@ -90,10 +92,15 @@ psp_rr: $(psp_rr-objs)
 binaries: tcp_rr tcp_stream tcp_crr udp_rr udp_stream psp_stream psp_crr psp_rr
 
 clean:
-	rm -f *.o tcp_rr tcp_stream tcp_crr udp_rr udp_stream psp_stream psp_crr psp_rr
+	rm -f *.o tcp_rr tcp_stream tcp_crr udp_rr udp_stream psp_stream psp_crr psp_rr $(deps)
+
+vclean: clean
+	rm -f *.log
 
 IMAGE ?= neper
 TAG ?= $(shell git describe --tags --always --dirty)
 
 image:
 	docker build --tag ${IMAGE}:${TAG} .
+
+-include $(deps)
