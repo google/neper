@@ -73,7 +73,7 @@ static int get_listen_fd(struct callbacks *cb, struct sockaddr_in6 *addr) {
                         return listeners[i].listenfd;
                 }
 
-                i = i + 1 % nlisteners;
+                i = (i + 1) % nlisteners;
         } while (i != next_listener);
 
         return -1;
