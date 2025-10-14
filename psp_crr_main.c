@@ -40,8 +40,6 @@ int main(int argc, char **argv)
 
         /* Now parse the command line arguments */
         flags_parser_run(fp, argc, argv);
-        if (opts.logtostderr)
-                cb.logtostderr(cb.logger);
         flags_parser_dump(fp);
         flags_parser_destroy(fp);
 
