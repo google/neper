@@ -27,6 +27,13 @@ struct flow;  /* note: struct is defined opaquely within flow.c */
 struct neper_stat;
 struct thread;
 
+struct rtt_log {
+        double rtt;
+        int thread_id;
+        int flow_id;
+        struct timespec timestamp;
+};
+
 typedef void (*flow_handler)(struct flow *, uint32_t);
 
 /* Simple accessors. */
@@ -57,6 +64,8 @@ struct flow_create_args {
 };
 
 struct flow *flow_create(const struct flow_create_args *);
+long flow_rtt_log_count(const struct flow *f);
+void flow_increment_rtt_log_count(struct flow *f);
 void flow_delete(struct flow *);
 /* Adds duration to f's next event time. */
 void flow_update_next_event(struct flow *f, uint64_t duration);

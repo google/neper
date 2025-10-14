@@ -24,11 +24,14 @@
  * as sending a message, opening a socket connection, or gathering statistics.
  */
 
+#include <stdio.h>
+#include <string.h>
 #include "coef.h"
 #include "common.h"
 #include "countdown_cond.h"
 #include "flow.h"
 #include "histo.h"
+#include "logging.h"
 #include "percentiles.h"
 #include "print.h"
 #include "rr.h"
@@ -202,6 +205,15 @@ static void rr_state_init(struct thread *t, int fd,
         };
 
         flow_create(&args);
+
+        if (t->opts->client && t->opts->log_rtt && t->rtt_logs == NULL) {
+                t->rtt_log_capacity = (long)t->flow_limit *
+                                      t->opts->logrtt_entries_per_flow;
+                if (t->rtt_log_capacity > 0) {
+                        t->rtt_logs = calloc_or_die(
+                            t->rtt_log_capacity, sizeof(struct rtt_log), t->cb);
+                }
+        }
 }
 
 /*
@@ -326,6 +338,19 @@ static bool rr_do_compl(struct flow *f,
         struct neper_stat *stat = flow_stat(f);
         struct neper_histo *histo = stat->histo(stat);
         neper_histo_event(histo, elapsed);
+
+        if (t->opts->client && t->rtt_logs) {
+                long count = flow_rtt_log_count(f);
+                if (count < t->opts->logrtt_entries_per_flow) {
+                        long offset = flow_id(f) * t->opts->logrtt_entries_per_flow;
+                        struct rtt_log *log = &t->rtt_logs[offset + count];
+                        log->rtt = elapsed;
+                        log->thread_id = t->index;
+                        log->flow_id = flow_id(f);
+                        log->timestamp = *now;
+                        flow_increment_rtt_log_count(f);
+                }
+        }
 
         if (t->data_pending) {
                 /* data vs time mode, last rr? */
@@ -497,6 +522,54 @@ fn_add(struct neper_stat *stat, void *ptr)
         return 0;
 }
 
+static void rr_log_rtt(struct thread *tinfo, struct callbacks *cb,
+                       int num_transactions)
+{
+        const char *sep = " ";
+        const char *ext = strrchr(tinfo[0].opts->log_rtt, '.');
+        if (ext && !strcmp(ext, ".csv"))
+                sep = ",";
+
+        FILE *rtt_log_file = fopen(tinfo[0].opts->log_rtt, "w");
+        if (!rtt_log_file)
+                PLOG_FATAL(cb, "fopen %s", tinfo[0].opts->log_rtt);
+
+        fprintf(rtt_log_file, "%15s%s%10s%s%10s%s%12s\n", "timestamp", sep, "thread_id", sep, "flow_id", sep, "rtt");
+
+        long transactions_logged = 0;
+        const struct timespec *start_time = tinfo[0].time_start;
+
+        for (int i = 0; i < tinfo[0].opts->num_threads; i++) {
+                struct thread *t = &tinfo[i];
+                if (!t->rtt_logs)
+                        continue;
+                for (int j = 0; j < t->flow_count; j++) {
+                        struct flow *f = t->flows[j];
+                        if (!f)
+                                continue;
+                        transactions_logged += flow_rtt_log_count(f);
+                        long offset = flow_id(f) * t->opts->logrtt_entries_per_flow;
+                        for (long k = 0; k < flow_rtt_log_count(f); k++) {
+                                struct rtt_log *log = &t->rtt_logs[offset + k];
+                                double elapsed = seconds_between(start_time, &log->timestamp);
+                                fprintf(rtt_log_file, "%15.9f%s%10d%s%10d%s%12.9f\n",
+                                        elapsed, sep, log->thread_id, sep,
+                                        log->flow_id, sep, log->rtt);
+                        }
+                }
+                free(t->rtt_logs);
+                t->rtt_logs = NULL;
+        }
+        fclose(rtt_log_file);
+        PRINT(cb, "rtt_transactions_logged", "%ld", transactions_logged);
+
+        if (transactions_logged < num_transactions) {
+                LOG_INFO(cb,
+                         "rtt_transactions_logged (%ld) < num_transactions (%d)",
+                         transactions_logged, num_transactions);
+        }
+}
+
 int rr_report_stats(struct thread *tinfo)
 {
         const struct options *opts = tinfo[0].opts;
@@ -510,6 +583,9 @@ int rr_report_stats(struct thread *tinfo)
 
         int num_events = thread_stats_events(tinfo);
         PRINT(cb, "num_transactions", "%d", num_events);
+
+        if (opts->client && tinfo[0].opts->log_rtt)
+                rr_log_rtt(tinfo, cb, num_events);
 
         struct neper_histo *sum = neper_histo_new(tinfo, DEFAULT_K_BITS);
         for (i = 0; i < opts->num_threads; i++)

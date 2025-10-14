@@ -28,6 +28,14 @@ void parse_all_samples(const char *arg, void *out, struct callbacks *cb)
                 *(const char **)out = "samples.csv";
 }
 
+void parse_log_rtt(const char *arg, void *out, struct callbacks *cb)
+{
+        if (arg)
+                *(const char **)out = arg;
+        else
+                *(const char **)out = "rtt_samples.txt";
+}
+
 static long long parse_rate(const char *str, struct callbacks *cb)
 {
         const struct rate_conversion *conv;
