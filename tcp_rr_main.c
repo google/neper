@@ -39,8 +39,6 @@ int main(int argc, char **argv)
         fp = add_flags_tcp_rr(fp);
 
         flags_parser_run(fp, argc, argv);
-        if (opts.logtostderr)
-                cb.logtostderr(cb.logger);
         flags_parser_dump(fp);
         flags_parser_destroy(fp);
 
