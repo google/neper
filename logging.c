@@ -74,6 +74,15 @@ static void open_log(void)
         if (log_file)
                 fclose(log_file);
         log_file = fopen(path, "w");
+        if (!log_file) {
+                printf("failed to open log file \"%s\" (error %s). "
+                                "This happens often with blaze run, in which "
+                                "case try using --logtostderr or --nolog\n",
+                                path, strerror(errno));
+                fflush(stdout);
+                fflush(stderr);
+                exit(1);
+        }
 }
 
 static void close_log(void)

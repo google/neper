@@ -47,7 +47,6 @@ struct flags_parser *add_flags_common(struct flags_parser *fp)
         DEFINE_FLAG(fp, double,       interval,      1.0,     'I', "For how many seconds that a sample is generated");
         DEFINE_FLAG(fp, long long,    max_pacing_rate, 0,     'm', "SO_MAX_PACING_RATE value; use as 64-bit unsigned");
         DEFINE_FLAG_PARSER(fp,        max_pacing_rate, parse_max_pacing_rate);
-        DEFINE_FLAG(fp, int,          mark,          0,       'M', "SO_MARK value; use as 32-bit unsigned");
         DEFINE_FLAG(fp, const char *, local_hosts,   NULL,    'L', "Local hostnames or IP addresses");
         DEFINE_FLAG(fp, const char *, host,          NULL,    'H', "Server hostname or IP address");
         DEFINE_FLAG(fp, const char *, control_port,  "12866", 'C', "Server control port");
@@ -96,6 +95,7 @@ struct flags_parser *add_flags_rr(struct flags_parser *fp)
         DEFINE_FLAG_PRINTER(fp,              percentiles, percentiles_print);
         DEFINE_FLAG(fp, int,                 test_length,   10,                      'l', "Test length, >0 seconds, <0 transactions");
         DEFINE_FLAG(fp, int,                 buffer_size,   65536,                   'B', "Number of bytes that each read()/send() can transfer at once");
+        DEFINE_FLAG(fp, int,                 mark,          0,                       0, "SO_MARK value; use as 32-bit unsigned");
 
         /* Return the updated fp */
         return (fp);
@@ -122,6 +122,7 @@ struct flags_parser *add_flags_tcp_rr(struct flags_parser *fp)
         DEFINE_FLAG(fp, unsigned long, delay,           0,       'D', "Delay between each send()/write() in ns (default), us, ms, or s");
         DEFINE_FLAG_PARSER(fp,         delay, parse_duration);
         DEFINE_FLAG(fp, bool,          async_connect,   false,   0,  "use non blocking connect");
+        DEFINE_FLAG(fp, bool,          reuseaddr,       false,   0, "Use SO_REUSEADDR on sockets");
         DEFINE_FLAG(fp, unsigned long, noburst,         0,       0, "noburst interval in ns (default), us, ms, or s");
         DEFINE_FLAG_PARSER(fp,         noburst, parse_duration);
 
@@ -151,6 +152,7 @@ struct flags_parser *add_flags_tcp_stream(struct flags_parser *fp)
         DEFINE_FLAG(fp, bool,          enable_tcp_maerts,    false,   'M', "Enables TCP_MAERTS test (server writes and client reads). It overrides enable_read, and enable_write");
         DEFINE_FLAG(fp, bool,          async_connect,   false,   0,  "use non blocking connect");
         DEFINE_FLAG(fp, bool,          no_cork,         false,   0,  "Do not set MSG_MORE when sending over data sockets.");
+        DEFINE_FLAG(fp, int,           mark,            0,       'M', "SO_MARK value; use as 32-bit unsigned");
 
         /* Return the updated fp */
         return (fp);
@@ -170,6 +172,7 @@ struct flags_parser *add_flags_udp_stream(struct flags_parser *fp)
         /* Define flags specialized to only UDP_STREAM */
         DEFINE_FLAG(fp, unsigned long, delay,           0,       'D', "Nanosecond delay between each send()/write()");
         DEFINE_FLAG(fp, int,           buffer_size,     1400,    'B', "Number of bytes that each read/write uses as the buffer");
+        DEFINE_FLAG(fp, int,           mark,            0,       'M', "SO_MARK value; use as 32-bit unsigned");
 
         /* Return the updated fp */
         return (fp);
