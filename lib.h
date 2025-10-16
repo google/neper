@@ -55,9 +55,6 @@ struct callbacks {
         void (*log_info)(void *logger, const char *file, int line,
                          const char *function, const char *format, ...)
             __attribute__((format(printf, 5, 6)));
-
-        /* Notify the logger to log to stderr. */
-        void (*logtostderr)(void *logger);
 };
 
 struct options {

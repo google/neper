@@ -45,6 +45,7 @@ struct flags_parser {
         struct flag *flags;
         bool help;
         bool version;
+        char short_names[32];
 };
 
 static void flag_destroy(struct flag *flag)
@@ -102,6 +103,18 @@ void flags_parser_add(struct flags_parser *fp, char short_name,
                       const char *type, void *variable)
 {
         struct flag *flag;
+
+        /* Ensure we don't clobber another flag's name. We only check the short
+         * name, as the long_name is derived directly from a struct field. So if
+         * two flags set it, they're just rendundant, not broken.
+         */
+        int index = short_name / 8;
+        char bit = 1 << (short_name & 7);
+        if (short_name != 0 && fp->short_names[index]&bit)
+                LOG_FATAL(fp->cb, "error: flag short name %c set twice",
+                                short_name);
+        fp->short_names[index] |= bit;
+
 
         flag = calloc(1, sizeof(*flag));
         if (!flag)

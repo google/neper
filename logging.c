@@ -30,7 +30,6 @@
 /* TODO remove global variables */
 static int stdout_lines;
 static FILE *log_file;
-static bool g_logtostderr;
 
 static void print(void *logger, const char *key, const char *value_fmt, ...)
 {
@@ -74,6 +73,15 @@ static void open_log(void)
         if (log_file)
                 fclose(log_file);
         log_file = fopen(path, "w");
+        if (!log_file) {
+                printf("failed to open log file \"%s\" (error %s). "
+                                "This happens often with blaze run, in which "
+                                "case try using --logtostderr or --nolog\n",
+                                path, strerror(errno));
+                fflush(stdout);
+                fflush(stderr);
+                exit(1);
+        }
 }
 
 static void close_log(void)
@@ -135,7 +143,7 @@ static void logging(const char *file, int line, const char *func,
         if (thread_id == -1)
                 thread_id = getpid();
         path = strdup(file);
-        fprintf(g_logtostderr ? stderr : log_file,
+        fprintf(log_file,
                 "%c%02d%02d %02d:%02d:%02d.%06ld %3d %6d %s:%d] %s: %s\n",
                 level_char, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min,
                 tm.tm_sec, ts.tv_nsec / 1000, stdout_lines, thread_id,
@@ -147,7 +155,7 @@ static void logging(const char *file, int line, const char *func,
         if (size > sizeof(buf))
                 free(msg);
         if (level == FATAL || level == ERROR || level == WARNING)
-                fflush(g_logtostderr ? stderr : log_file);
+                fflush(log_file);
         if (level == FATAL) {
                 fclose(log_file);
                 fflush(stdout);
@@ -196,11 +204,6 @@ static void log_info(void *logger, const char *file, int line,
         va_end(argp);
 }
 
-static void logtostderr(void *logger)
-{
-        g_logtostderr = true;
-}
-
 static void logtonull()
 {
         log_file = fopen("/dev/null", "w");
@@ -237,7 +240,6 @@ void logging_init(struct callbacks *cb, int argc, char **argv)
         cb->log_error = log_error;
         cb->log_warn = log_warn;
         cb->log_info = log_info;
-        cb->logtostderr = logtostderr;
 }
 
 void logging_exit(struct callbacks *cb)

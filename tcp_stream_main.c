@@ -38,8 +38,6 @@ int main(int argc, char **argv)
         fp = add_flags_tcp_stream(fp);
 
         flags_parser_run(fp, argc, argv);
-        if (opts.logtostderr)
-                cb.logtostderr(cb.logger);
 
         if (opts.enable_tcp_maerts) {
                 opts.enable_read = opts.client;
