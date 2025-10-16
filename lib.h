@@ -131,6 +131,10 @@ struct options {
 
         /* tcp_crr */
         bool nostats;
+
+        /* rr */
+        const char *log_rtt;
+        int logrtt_entries_per_flow;
 };
 
 #ifdef __cplusplus

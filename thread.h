@@ -134,6 +134,8 @@ struct thread {
         int64_t rounding_ns; /* used to round to millisecond granularity */
         /* The duration between sends on a thread when using noburst. */
         int64_t gap_ns;
+        struct rtt_log *rtt_logs;
+        long rtt_log_capacity;
 };
 
 int thread_stats_events(const struct thread *);

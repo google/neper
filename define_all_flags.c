@@ -95,7 +95,11 @@ struct flags_parser *add_flags_rr(struct flags_parser *fp)
         DEFINE_FLAG_PRINTER(fp,              percentiles, percentiles_print);
         DEFINE_FLAG(fp, int,                 test_length,   10,                      'l', "Test length, >0 seconds, <0 transactions");
         DEFINE_FLAG(fp, int,                 buffer_size,   65536,                   'B', "Number of bytes that each read()/send() can transfer at once");
-        DEFINE_FLAG(fp, int,                 mark,          0,                       0, "SO_MARK value; use as 32-bit unsigned");
+        DEFINE_FLAG(fp, const char *,        log_rtt,       NULL,                     0,  "Logs per transaction rtt to txt/csv file");
+        DEFINE_FLAG_HAS_OPTIONAL_ARGUMENT(fp, log_rtt);
+        DEFINE_FLAG_PARSER(fp,               log_rtt, parse_log_rtt);
+        DEFINE_FLAG(fp, int,                 logrtt_entries_per_flow, 10000,          0,  "Number of RTT entries to log per flow. Logging stops when this limit is reached.");
+        DEFINE_FLAG(fp, int,                 mark,          0,                        0,  "SO_MARK value; use as 32-bit unsigned");
 
         /* Return the updated fp */
         return (fp);

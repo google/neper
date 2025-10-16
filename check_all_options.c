@@ -86,6 +86,8 @@ void check_options_rr(struct options *opts, struct callbacks *cb)
               "Request size must be positive.");
         CHECK(cb, opts->response_size > 0,
               "Response size must be positive.");
+        CHECK(cb, (opts->log_rtt == NULL || opts->logrtt_entries_per_flow > 0),
+              "Log RTT entries per flow must be positive.");
 }
 
 void check_options_stream(struct options *opts, struct callbacks *cb)

@@ -51,6 +51,8 @@ struct flow {
 	/* TCP RX zerocopy state. */
 	void *f_rx_zerocopy_buffer;
 	size_t f_rx_zerocopy_buffer_sz;
+
+        long rtt_log_count;
 };
 
 int flow_fd(const struct flow *f)
@@ -145,6 +147,16 @@ void flow_init_rx_zerocopy(struct flow *f, int buffer_size, struct callbacks *cb
                 PLOG_FATAL(cb, "failed to map RX zerocopy buffer");
 
         f->f_rx_zerocopy_buffer_sz = buffer_size;
+}
+
+long flow_rtt_log_count(const struct flow *f)
+{
+        return f->rtt_log_count;
+}
+
+void flow_increment_rtt_log_count(struct flow *f)
+{
+        f->rtt_log_count++;
 }
 
 struct flow *flow_create(const struct flow_create_args *args)
