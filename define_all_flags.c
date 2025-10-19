@@ -99,7 +99,7 @@ struct flags_parser *add_flags_rr(struct flags_parser *fp)
         DEFINE_FLAG_HAS_OPTIONAL_ARGUMENT(fp, log_rtt);
         DEFINE_FLAG_PARSER(fp,               log_rtt, parse_log_rtt);
         DEFINE_FLAG(fp, int,                 logrtt_entries_per_flow, 10000,          0,  "Number of RTT entries to log per flow. Logging stops when this limit is reached.");
-        DEFINE_FLAG(fp, int,                 mark,          0,                        0,  "SO_MARK value; use as 32-bit unsigned");
+        DEFINE_FLAG(fp, int,                 mark,          0,                        'M',  "SO_MARK value; use as 32-bit unsigned");
 
         /* Return the updated fp */
         return (fp);
@@ -156,7 +156,7 @@ struct flags_parser *add_flags_tcp_stream(struct flags_parser *fp)
         DEFINE_FLAG(fp, bool,          enable_tcp_maerts,    false,   'M', "Enables TCP_MAERTS test (server writes and client reads). It overrides enable_read, and enable_write");
         DEFINE_FLAG(fp, bool,          async_connect,   false,   0,  "use non blocking connect");
         DEFINE_FLAG(fp, bool,          no_cork,         false,   0,  "Do not set MSG_MORE when sending over data sockets.");
-        DEFINE_FLAG(fp, int,           mark,            0,       'M', "SO_MARK value; use as 32-bit unsigned");
+        DEFINE_FLAG(fp, int,           mark,            0,       0, "SO_MARK value; use as 32-bit unsigned");
 
         /* Return the updated fp */
         return (fp);
