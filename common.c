@@ -233,6 +233,12 @@ void set_tcp_tx_delay(int fd, int delay, struct callbacks *cb)
                 PLOG_ERROR(cb, "setsockopt(TCP_TX_DELAY)");
 }
 
+void set_congestion_control(int fd, const char *cc, struct callbacks *cb)
+{
+        if (setsockopt(fd, SOL_TCP, TCP_CONGESTION, cc, strlen(cc)))
+                PLOG_ERROR(cb, "setsockopt(TCP_CONGESTION)");
+}
+
 void set_tcp_no_delay(int fd, struct callbacks *cb)
 {
         int value = true;

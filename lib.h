@@ -96,6 +96,7 @@ struct options {
         bool time_wait;
         double interval;
         long long max_pacing_rate;
+        const char *congestion_control;
         const char *local_hosts;
         const char *host;
         const char *control_port;

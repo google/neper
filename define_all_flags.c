@@ -72,6 +72,7 @@ struct flags_parser *add_flags_tcp(struct flags_parser *fp)
 #endif
         DEFINE_FLAG(fp, int,          tcp_tx_delay,   0,      't', "Force usec delay in TCP flows");
         DEFINE_FLAG(fp, bool,         no_delay,       false,   0,  "Set TCP_NODELAY sockopt on data sockets to disable Nagle's algorithm");
+        DEFINE_FLAG(fp, const char *, congestion_control, NULL,  0,  "TCP congestion control algorithm to control connection sending rate");
 
         /* Return the updated fp */
         return (fp);
