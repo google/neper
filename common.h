@@ -157,6 +157,7 @@ void set_freebind(int fd, struct callbacks *cb);
 void set_debug(int fd, int onoff, struct callbacks *cb);
 void set_mark(int fd, int mark, struct callbacks *cb);
 void set_tcp_tx_delay(int fd, int delay, struct callbacks *cb);
+void set_congestion_control(int fd, const char *cc, struct callbacks *cb);
 void set_tcp_no_delay(int fd, struct callbacks *cb);
 void fill_random(char *buf, int size);
 int do_close(int fd);

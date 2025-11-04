@@ -80,6 +80,8 @@ static void socket_init_established(struct thread *t, int s)
                 uint64_t m = opts->max_pacing_rate;
                 setsockopt(s, SOL_SOCKET, SO_MAX_PACING_RATE, &m, sizeof(m));
         }
+        if (opts->congestion_control)
+                set_congestion_control(s, opts->congestion_control, cb);
         if (opts->tcp_tx_delay)
                 set_tcp_tx_delay(s, opts->tcp_tx_delay, cb);
         set_nonblocking(s, cb);
