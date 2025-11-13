@@ -44,6 +44,7 @@ struct neper_histo {
         uint64_t all_count;
         uint64_t one_count;
         uint64_t cur_count;
+        uint64_t discard_count;
 
         double all_sum;
         double one_sum;
@@ -203,6 +204,11 @@ void neper_histo_event(struct neper_histo *impl, double delta_s)
 {
         int i;
 
+        if (impl->thread->opts->discard > impl->discard_count) {
+          impl->discard_count++;
+          return;
+        }
+
         impl->cur_count++;
         impl->cur_sum  += delta_s;
         impl->cur_sum2 += delta_s * delta_s;
@@ -289,7 +295,7 @@ void neper_histo_delete(struct neper_histo *impl)
 
 struct neper_histo *neper_histo_new(const struct thread *t, uint8_t k_bits)
 {
-        struct neper_histo *ret, histo = {};
+        struct neper_histo *ret, histo = {0};
         size_t memsize = sizeof(histo);
 
         if (k_bits > 10)

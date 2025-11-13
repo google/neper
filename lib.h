@@ -72,6 +72,8 @@ struct options {
         int send_flags;
         int mark;
         int tcp_tx_delay;
+        int discard;
+        int busywait;
         bool stime_use_proc; /* Enable use of /proc/stat values for stime */
         bool ipv4;
         bool ipv6;
@@ -86,6 +88,7 @@ struct options {
         bool logtostderr;
         bool nolog;
         bool nonblocking;
+        bool optimistic;
         bool freebind;
         bool tcp_fastopen;
         bool skip_rx_copy;
