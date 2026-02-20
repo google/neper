@@ -65,6 +65,15 @@ struct flow_create_args {
         struct neper_stat *(*stat)(struct flow *); /* stats callback */
 };
 
+struct zerocopy_stat {
+        uint64_t bytes;
+        int ee_copied_events;
+};
+
+void flow_update_zstat(struct flow *f, uint64_t zerocopied_bytes,
+                       int ee_copied);
+const struct zerocopy_stat *flow_get_zstat(const struct flow *f);
+
 struct flow *flow_create(const struct flow_create_args *);
 long flow_rtt_log_count(const struct flow *f);
 void flow_increment_rtt_log_count(struct flow *f);

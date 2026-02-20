@@ -151,6 +151,10 @@ void stream_handler(struct flow *f, uint32_t events)
                  * e.g. Linux kernel tools/testing/selftests/net/msg_zerocopy.c
                  */
         }
+        // Process error queue for TX_ZEROCOPY case.
+        if (events & EPOLLERR)
+                do_recvmsg_errqueue(t, f, events);
+
         if (opts->split_bidir && !opts->client &&
             events & EPOLLOUT && events & EPOLLOUT) {
                 /* See comments in flow.c on bidirectional traffic:

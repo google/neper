@@ -170,5 +170,8 @@ void print_unit(const char *name, const void *var, struct callbacks *);
 const struct rate_conversion *auto_unit(const double throughput,
                                         const struct rate_conversion *opt,
                                         struct callbacks *);
+
+int do_recvmsg_errqueue(struct thread *t, struct flow *f, uint32_t events);
+
 #endif
 /* clang-format on */

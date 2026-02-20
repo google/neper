@@ -54,6 +54,8 @@ struct flow {
 	void *f_rx_zerocopy_buffer;
 	size_t f_rx_zerocopy_buffer_sz;
 
+        struct zerocopy_stat z_stat;
+
         long rtt_log_count;
 };
 
@@ -345,6 +347,17 @@ void flow_delete(struct flow *f)
 void flow_update_next_event(struct flow *f, uint64_t duration)
 {
         f->f_next_event += duration;
+}
+
+void flow_update_zstat(struct flow *f, uint64_t zerocopied_bytes, int ee_copied)
+{
+        f->z_stat.bytes += zerocopied_bytes;
+        f->z_stat.ee_copied_events += ee_copied;
+}
+
+const struct zerocopy_stat *flow_get_zstat(const struct flow *f)
+{
+        return &f->z_stat;
 }
 
 ssize_t flow_recv_zerocopy(struct flow *f, void *copybuf, size_t copybuf_len) {

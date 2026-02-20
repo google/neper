@@ -246,6 +246,8 @@ static bool rr_do_send(struct flow *f, uint32_t events, rr_send_t rr_send)
                 len = opts->buffer_size;
                 flags |= MSG_MORE;
         }
+        if (opts->tx_zerocopy)
+                flags |= MSG_ZEROCOPY;
 
         ssize_t n = rr_send(f, flow_mbuf(f), len, flags);
         if (n == -1) {
@@ -373,6 +375,11 @@ static void rr_client_state_1(struct flow *f, uint32_t events)
 {
         struct thread *t = flow_thread(f);
 
+        if (t->opts->tx_zerocopy && (events & EPOLLERR)) {
+                do_recvmsg_errqueue(t, f, events);
+                return;
+        }
+
         if (rr_do_recv(f, events, rr_fn_recv)) {
                 struct rr_state *rr = flow_opaque(f);
 
@@ -393,6 +400,11 @@ static void rr_client_state_0(struct flow *f, uint32_t events)
 {
         struct thread *t = flow_thread(f);
 
+        if (t->opts->tx_zerocopy && (events & EPOLLERR)) {
+                do_recvmsg_errqueue(t, f, events);
+                return;
+        }
+
         if (t->data_pending && countdown_cond_dec(t->data_pending) < 0) {
                 /* data vs time mode and no more transactons to send */
                 return;
@@ -407,6 +419,13 @@ static void rr_client_state_0(struct flow *f, uint32_t events)
 
 static void crr_client_state_1(struct flow *f, uint32_t events)
 {
+        struct thread *t = flow_thread(f);
+
+        if (t->opts->tx_zerocopy && (events & EPOLLERR)) {
+                do_recvmsg_errqueue(t, f, events);
+                return;
+        }
+
         if (rr_do_recv(f, events, rr_fn_recv)) {
                 struct rr_state *rr = flow_opaque(f);
 
@@ -419,6 +438,11 @@ static void crr_client_state_1(struct flow *f, uint32_t events)
 static void crr_client_state_0(struct flow *f, uint32_t events)
 {
         struct thread *t = flow_thread(f);
+
+        if (t->opts->tx_zerocopy && (events & EPOLLERR)) {
+                do_recvmsg_errqueue(t, f, events);
+                return;
+        }
 
         if (t->data_pending && countdown_cond_dec(t->data_pending) < 0) {
                 /* data vs time mode and no more transactons to send */
@@ -436,6 +460,11 @@ static void rr_server_state_2(struct flow *f, uint32_t events)
         struct thread *t = flow_thread(f);
         struct neper_stat *stat = flow_stat(f);
         struct neper_histo *histo = stat ? stat->histo(stat) : NULL;
+
+        if (t->opts->tx_zerocopy && (events & EPOLLERR)) {
+                do_recvmsg_errqueue(t, f, events);
+                return;
+        }
 
         if (rr_do_send(f, events, rr->rr_send)) {
                 if (stat) {
@@ -455,6 +484,12 @@ static void rr_server_state_1(struct flow *f)
 static void rr_server_state_0(struct flow *f, uint32_t events)
 {
         struct rr_state *rr = flow_opaque(f);
+        struct thread *t = flow_thread(f);
+
+        if (t->opts->tx_zerocopy && (events & EPOLLERR)) {
+                do_recvmsg_errqueue(t, f, events);
+                return;
+        }
 
         if (rr_do_recv(f, events, rr->rr_recv))
                 rr_server_state_1(f);
