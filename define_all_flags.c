@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #include "common.h"
 #include "flags.h"
 #include "lib.h"
@@ -183,3 +185,4 @@ struct flags_parser *add_flags_udp_stream(struct flags_parser *fp)
         return (fp);
 }
 
+/* clang-format on */

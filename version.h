@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #ifndef THIRD_PARTY_NEPER_VERSION_H
 #define THIRD_PARTY_NEPER_VERSION_H
 
@@ -29,3 +31,4 @@ void show_version(void);
 #endif
 
 #endif
+/* clang-format on */

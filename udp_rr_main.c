@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #include "common.h"
 #include "countdown_cond.h"
 #include "flags.h"
@@ -63,3 +65,4 @@ exit:
         logging_exit(&cb);
         return exit_code;
 }
+/* clang-format on */

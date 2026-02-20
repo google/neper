@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #include <fcntl.h>
 #include <netinet/tcp.h>
 #include <stddef.h>
@@ -346,3 +348,4 @@ int create_suicide_timeout(int sec_to_suicide)
         }
         return 0;
 }
+/* clang-format on */

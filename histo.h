@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #ifndef THIRD_PARTY_NEPER_HISTO_H
 #define THIRD_PARTY_NEPER_HISTO_H
 
@@ -74,3 +76,4 @@ void neper_histo_print(struct neper_histo *);
 void neper_histo_delete(struct neper_histo *);
 
 #endif
+/* clang-format on */

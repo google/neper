@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #ifndef THIRD_PARTY_NEPER_THREAD_H
 #define THIRD_PARTY_NEPER_THREAD_H
 
@@ -158,3 +160,4 @@ void thread_flush_stat(struct thread *);
 void thread_clear_flow_or_die(struct thread*, struct flow *);
 
 #endif
+/* clang-format on */

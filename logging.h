@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #ifndef THIRD_PARTY_NEPER_LOGGING_H
 #define THIRD_PARTY_NEPER_LOGGING_H
 
@@ -41,3 +43,4 @@ void logging_exit(struct callbacks *);
                 LOG_FATAL(cb, fmt, ##args)
 
 #endif
+/* clang-format on */

@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #ifndef THIRD_PARTY_NEPER_PARSE_H
 #define THIRD_PARTY_NEPER_PARSE_H
 
@@ -24,3 +26,4 @@ void parse_unit(const char *arg, void *out, struct callbacks *);
 void parse_duration(const char *arg, void *out, struct callbacks *cb);
 
 #endif
+/* clang-format on */

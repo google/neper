@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #ifndef THIRD_PARTY_NEPER_COMMON_H
 #define THIRD_PARTY_NEPER_COMMON_H
 
@@ -169,3 +171,4 @@ const struct rate_conversion *auto_unit(const double throughput,
                                         const struct rate_conversion *opt,
                                         struct callbacks *);
 #endif
+/* clang-format on */

@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #include "stream.h"
 
 #include "coef.h"
@@ -223,3 +225,4 @@ void stream_flow_init(struct thread *t, int fd)
 	if (t->opts->rx_zerocopy)
 		flow_init_rx_zerocopy(f, t->opts->buffer_size, t->cb);
 }
+/* clang-format on */

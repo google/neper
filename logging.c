@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #include "logging.h"
 #include <errno.h>
 #include <libgen.h>
@@ -246,3 +248,4 @@ void logging_exit(struct callbacks *cb)
 {
         close_log();
 }
+/* clang-format on */

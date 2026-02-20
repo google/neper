@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #ifndef THIRD_PARTY_NEPER_SOCKET_H
 #define THIRD_PARTY_NEPER_SOCKET_H
 
@@ -25,3 +27,4 @@ int  socket_connect_one(struct thread *, int flags);
 void socket_connect_all(struct thread *);
 
 #endif
+/* clang-format on */

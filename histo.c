@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #include "histo.h"
 #include "common.h"
 #include "logging.h"
@@ -319,3 +321,4 @@ struct neper_histo *neper_histo_new(const struct thread *t, uint8_t k_bits)
 
         return ret;
 }
+/* clang-format on */

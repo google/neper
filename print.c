@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #include "print.h"
 
 #include "common.h"
@@ -62,3 +64,4 @@ void print_rusage(FILE *csv, const struct rusage *rusage, const char *nl)
                 rusage->ru_nvcsw, rusage->ru_nivcsw);
         fprintf(csv, "%s", nl);
 }
+/* clang-format on */

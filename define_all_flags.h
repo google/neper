@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #ifndef THIRD_PARTY_NEPER_DEFINE_ALL_FLAGS_H
 #define THIRD_PARTY_NEPER_DEFINE_ALL_FLAGS_H
 
@@ -32,3 +34,4 @@ struct flags_parser *add_flags_udp_rr(struct flags_parser *fp);
 struct flags_parser *add_flags_udp_stream(struct flags_parser *fp);
 
 #endif
+/* clang-format on */

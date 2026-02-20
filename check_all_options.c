@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #include "common.h"
 #include "check_all_options.h"
 
@@ -132,3 +134,4 @@ void check_options_psp_common(struct options *opts, struct callbacks *cb)
                       "PSP server requires server IP (-H) for device lookup.");
         }
 }
+/* clang-format on */

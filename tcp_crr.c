@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #include "common.h"
 #include "rr.h"
 #include "socket.h"
@@ -41,3 +43,4 @@ int tcp_crr(struct options *opts, struct callbacks *cb)
                 opts->nostats = true;
         return run_main_thread(opts, cb, fn);
 }
+/* clang-format on */

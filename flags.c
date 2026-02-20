@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #include "flags.h"
 
 #include <ctype.h>
@@ -369,3 +371,4 @@ void flags_parser_dump(struct flags_parser *fp)
                 print_flag(flag, fp->cb);
         }
 }
+/* clang-format on */

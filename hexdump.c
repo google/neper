@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #include "hexdump.h"
 #include <ctype.h>
 #include <string.h>
@@ -51,3 +53,4 @@ char *hexdump(const char *in, size_t in_len, char *out, size_t out_len)
         out[sizeof(row_buf) * num_rows] = '\0';
         return out;
 }
+/* clang-format on */

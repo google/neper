@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #ifndef THIRD_PARTY_NEPER_COEF_H
 #define THIRD_PARTY_NEPER_COEF_H
 
@@ -44,3 +46,4 @@ struct neper_coef {
 struct neper_coef *neper_coef(void);
 
 #endif
+/* clang-format on */

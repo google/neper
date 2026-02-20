@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #include "rusage.h"
 #include "common.h"
 
@@ -167,3 +169,4 @@ struct neper_rusage *neper_rusage(double interval)
 
         return rusage;
 }
+/* clang-format on */

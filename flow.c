@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #include <linux/tcp.h>
 #include <linux/version.h>
 #include <stdint.h>
@@ -394,3 +396,4 @@ ssize_t flow_recv_zerocopy(struct flow *f, void *copybuf, size_t copybuf_len) {
 #endif
         return n_read;
 }
+/* clang-format on */

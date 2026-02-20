@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #ifndef THIRD_PARTY_NEPER_CONTROL_PLANE_H
 #define THIRD_PARTY_NEPER_CONTROL_PLANE_H
 
@@ -36,3 +38,4 @@ int control_plane_incidents(struct control_plane *cp);
 void control_plane_destroy(struct control_plane *cp);
 
 #endif
+/* clang-format on */

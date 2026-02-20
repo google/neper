@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #include "version.h"
 #include <stdio.h>
 
@@ -37,3 +39,4 @@ void show_version(void)
 {
         printf("%s\n", get_version());
 }
+/* clang-format on */

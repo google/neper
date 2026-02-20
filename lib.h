@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #ifndef THIRD_PARTY_NEPER_LIB_H
 #define THIRD_PARTY_NEPER_LIB_H
 
@@ -156,3 +158,4 @@ int psp_crr(struct options *, struct callbacks *);
 #endif
 
 #endif
+/* clang-format on */

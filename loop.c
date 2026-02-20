@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #include <time.h>
 
 #include "common.h"
@@ -100,3 +102,4 @@ void *loop(struct thread *t)
         /* This is technically a thread callback so it must return a (void *) */
         return NULL;
 }
+/* clang-format on */

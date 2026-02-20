@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #ifndef THIRD_PARTY_NEPER_PSP_LIB_H_
 #define THIRD_PARTY_NEPER_PSP_LIB_H_
 
@@ -45,3 +47,4 @@ void psp_pre_connect(struct thread *t, int s, struct addrinfo *ai);
 void psp_post_listen(struct thread *t, int s, struct addrinfo *ai);
 
 #endif  // THIRD_PARTY_NEPER_PSP_LIB_H_
+/* clang-format on */

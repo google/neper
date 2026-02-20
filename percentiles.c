@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #include "percentiles.h"
 #include <errno.h>
 #include <limits.h>
@@ -92,3 +94,4 @@ void percentiles_print(const char *name, const void *var, struct callbacks *cb)
         PRINT(cb, name, "%s", s);
         free(s);
 }
+/* clang-format on */

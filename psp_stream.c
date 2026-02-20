@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #include "common.h"
 #include "psp_lib.h"
 #include "socket.h"
@@ -43,3 +45,4 @@ int psp_stream(struct options *opts, struct callbacks *cb)
         const struct neper_fn *fn = opts->client ? &client_fn : &server_fn;
         return run_main_thread(opts, cb, fn);
 }
+/* clang-format on */

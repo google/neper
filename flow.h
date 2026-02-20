@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #ifndef THIRD_PARTY_NEPER_FLOW_H
 #define THIRD_PARTY_NEPER_FLOW_H
 
@@ -77,3 +79,4 @@ void flow_init_rx_zerocopy(struct flow *f, int buffer_size,
 ssize_t flow_recv_zerocopy(struct flow *f, void *copybuf, size_t copybuf_len);
 
 #endif
+/* clang-format on */

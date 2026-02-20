@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #ifndef THIRD_PARTY_NEPER_STREAM_H
 #define THIRD_PARTY_NEPER_STREAM_H
 
@@ -27,3 +29,4 @@ void stream_handler(struct flow *, uint32_t events);
 int stream_report(struct thread *);
 
 #endif
+/* clang-format on */

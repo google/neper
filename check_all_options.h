@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #ifndef THIRD_PARTY_NEPER_CHECK_ALL_OPTIONS_H_
 #define THIRD_PARTY_NEPER_CHECK_ALL_OPTIONS_H_
 
@@ -34,3 +36,4 @@ void check_options_psp_common(struct options *opts, struct callbacks *cb);
 
 #endif  // THIRD_PARTY_NEPER_CHECK_ALL_OPTIONS_H_
 
+/* clang-format on */

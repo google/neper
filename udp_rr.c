@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #include "common.h"
 #include "rr.h"
 #include "socket.h"
@@ -38,3 +40,4 @@ int udp_rr(struct options *opts, struct callbacks *cb)
         const struct neper_fn *fn = opts->client ? &client_fn : &server_fn;
         return run_main_thread(opts, cb, fn);
 }
+/* clang-format on */

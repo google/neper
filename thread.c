@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #include <sched.h>
 #include <stdint.h>
 #include <sys/epoll.h>
@@ -689,3 +691,4 @@ int run_main_thread(struct options *opts, struct callbacks *cb,
         free(data_pending);
         return ret;
 }
+/* clang-format on */

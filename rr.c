@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 /*
  * This file implements six different state machines:
  * TCP_RR client/server, UDP_RR client/server, and TCP_CRR client/server
@@ -620,3 +622,4 @@ int rr_report_stats(struct thread *tinfo)
 
         return 0;
 }
+/* clang-format on */
