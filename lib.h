@@ -138,6 +138,10 @@ struct options {
         /* rr */
         const char *log_rtt;
         int logrtt_entries_per_flow;
+
+        bool use_uring;
+        int uring_size;
+        int iov_len;
 };
 
 #ifdef __cplusplus

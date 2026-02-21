@@ -42,6 +42,12 @@
 #include "stats.h"
 #include "thread.h"
 
+#include <malloc.h>
+#include <unistd.h>
+#ifndef PAGE_SIZE
+#define PAGE_SIZE ((size_t)sysconf(_SC_PAGESIZE))
+#endif
+
 #define NEPER_EPOLL_MASK (EPOLLHUP | EPOLLRDHUP | EPOLLERR)
 
 typedef ssize_t (*rr_send_t)(struct flow *, const char *, size_t, int);
@@ -59,6 +65,11 @@ struct rr_state {
 
         struct sockaddr_storage rr_peer;  /* for UDP servers */
         socklen_t rr_peerlen;
+
+#ifdef WITH_IO_URING
+        struct msghdr msg;        /* sendmsg/recvmsg for UDP with io_uring */
+        struct iovec iov;
+#endif
 };
 
 struct rr_snap_opaque {
@@ -142,7 +153,20 @@ static void *rr_alloc(struct thread *t)
         len = MAX(opts->request_size, opts->response_size);
         len = MIN(len, opts->buffer_size);
 
-        t->f_mbuf = calloc_or_die(len, sizeof(char), t->cb);
+#ifdef WITH_IO_URING
+        if (opts->iov_len) {
+                int num_of_pages = (len + opts->iov_len - 1) / opts->iov_len;
+                size_t alloc_size = num_of_pages * PAGE_SIZE;
+                void *addr = memalign(PAGE_SIZE, alloc_size);
+
+                if (!addr)
+                        PLOG_FATAL(t->cb, "memalign");
+                t->f_mbuf = addr;
+        } else
+#endif
+        {
+                t->f_mbuf = calloc_or_die(len, sizeof(char), t->cb);
+        }
         return t->f_mbuf;
 }
 
@@ -196,6 +220,8 @@ static void rr_state_init(struct thread *t, int fd,
                 break;
         }
 
+        struct flow *f;
+
         const struct flow_create_args args = {
                 .thread  = t,
                 .fd      = fd,
@@ -206,7 +232,28 @@ static void rr_state_init(struct thread *t, int fd,
                 .stat    = rr_latency_init
         };
 
-        flow_create(&args);
+        f = flow_create(&args);
+
+#ifdef WITH_IO_URING
+        if (t->use_uring) {
+                struct flow_uring_req *f_req;
+
+                f_req = calloc_or_die(1, sizeof(struct flow_uring_req), t->cb);
+                f_req->f = f;
+                f_req->user_data = NULL;
+                f_req->cb = NULL;
+                flow_set_user_data(f, f_req);
+
+                // Setup for udp_rr
+                if (t->fn->fn_type == SOCK_DGRAM) {
+                        rr->msg.msg_iov = &rr->iov;
+                        rr->msg.msg_iovlen = 1;
+                        rr->msg.msg_name = (void *)&rr->rr_peer;
+                        rr->msg.msg_namelen = sizeof(struct sockaddr_storage);
+                }
+                state(f, 0);
+        }
+#endif
 
         if (t->opts->client && t->opts->log_rtt && t->rtt_logs == NULL) {
                 t->rtt_log_capacity = (long)t->flow_limit *
@@ -223,33 +270,10 @@ static void rr_state_init(struct thread *t, int fd,
  * successfully completed and the state machine may therefore advance.
  */
 
-static bool rr_do_send(struct flow *f, uint32_t events, rr_send_t rr_send)
+static inline bool rr_do_send_done(struct flow *f, int n)
 {
         struct thread *t = flow_thread(f);
-        const struct options *opts = t->opts;
         struct rr_state *rr = flow_opaque(f);
-
-        if (events & ~(NEPER_EPOLL_MASK | EPOLLOUT))
-                LOG_ERROR(t->cb, "%s(): unknown event(s) %x", __func__, events);
-
-        if (events & NEPER_EPOLL_MASK) {
-                flow_delete(f);
-                return false;
-        }
-
-        ssize_t len = rr->rr_xfer;
-        if ((len == opts->request_size) && opts->client)
-                common_gettime(&rr->rr_ts_1);
-
-        int flags = 0;
-        if (len > opts->buffer_size) {
-                len = opts->buffer_size;
-                flags |= MSG_MORE;
-        }
-        if (opts->tx_zerocopy)
-                flags |= MSG_ZEROCOPY;
-
-        ssize_t n = rr_send(f, flow_mbuf(f), len, flags);
         if (n == -1) {
                 PLOG_ERROR(t->cb, "send");
                 return false;
@@ -264,35 +288,103 @@ static bool rr_do_send(struct flow *f, uint32_t events, rr_send_t rr_send)
         return true;
 }
 
-static bool rr_do_recv(struct flow *f, uint32_t events, rr_recv_t rr_recv)
+static bool rr_do_send(struct flow *f, uint32_t events, rr_send_t rr_send)
 {
         struct thread *t = flow_thread(f);
         const struct options *opts = t->opts;
         struct rr_state *rr = flow_opaque(f);
 
-        if (events & ~(NEPER_EPOLL_MASK | EPOLLIN))
-                LOG_ERROR(t->cb, "%s(): unknown event(s) %x", __func__, events);
+#ifdef WITH_IO_URING
+        if (!t->use_uring)
+#endif
+        {
+                /* EPOLLERR might be marked if zerocopy is used, but should
+                 * already be processed before reaching here.
+                 */
+                if (events & ~(NEPER_EPOLL_MASK | EPOLLOUT))
+                        LOG_ERROR(t->cb, "%s(): unknown event(s) %x", __func__, events);
 
-        if (events & NEPER_EPOLL_MASK) {
-                flow_delete(f);
-                return false;
+                if (events & NEPER_EPOLL_MASK) {
+                        flow_delete(f);
+                        return false;
+                }
         }
 
         ssize_t len = rr->rr_xfer;
+        if ((len == opts->request_size) && opts->client)
+                common_gettime(&rr->rr_ts_1);
 
-        if (len > opts->buffer_size)
+        int flags = 0;
+        if (len > opts->buffer_size) {
                 len = opts->buffer_size;
+                flags |= MSG_MORE;
+        }
+        if (opts->tx_zerocopy)
+                flags |= MSG_ZEROCOPY;
 
-        ssize_t n;
-        do {
-                n = rr_recv(f, flow_mbuf(f), len);
-        } while(n == -1 && errno == EINTR);
+#ifdef WITH_IO_URING
+        if (t->use_uring) {
+                struct io_uring_sqe *sqe;
+
+                if (opts->iov_len) {
+                        struct msghdr msg = {0};
+                        struct iovec *iov_arr;
+                        int num_of_iov = (len + opts->iov_len - 1) / opts->iov_len;
+
+                        iov_arr = calloc_or_die(num_of_iov, sizeof(struct iovec), t->cb);
+
+                        for (int i = 0; i < num_of_iov; i++) {
+                                iov_arr[i].iov_base = (void *)((char *)flow_mbuf(f) + i * PAGE_SIZE);
+                                if (i == num_of_iov - 1)
+                                        iov_arr[i].iov_len = len - i * opts->iov_len;
+                                else
+                                        iov_arr[i].iov_len = opts->iov_len;
+                        }
+                        msg.msg_iov = iov_arr;
+                        msg.msg_iovlen = num_of_iov;
+
+                        sqe = io_uring_get_sqe(&t->ring);
+                        io_uring_prep_sendmsg(sqe, flow_fd(f), &msg, flags);
+                        int ret = flow_uring_submit_sqe(flow_get_user_data(f), sqe);
+                        free(iov_arr);
+                        return ret;
+                }
+
+                sqe = io_uring_get_sqe(&t->ring);
+                if (t->fn->fn_type == SOCK_DGRAM) {
+                        rr->iov.iov_base = (void*) flow_mbuf(f);
+                        rr->iov.iov_len = len;
+                        io_uring_prep_sendmsg(sqe, flow_fd(f), &rr->msg, flags);
+                } else {
+                        io_uring_prep_send(sqe, flow_fd(f), flow_mbuf(f), len, flags);
+                }
+                return flow_uring_submit_sqe(flow_get_user_data(f), sqe);
+        }
+#endif
+
+        ssize_t n = rr_send(f, flow_mbuf(f), len, flags);
+#ifdef WITH_IO_URING
+        if (t->use_uring && n == 1)
+                return false;
+#endif
+
+        return rr_do_send_done(f, n);
+}
+
+static inline bool rr_do_recv_done(struct flow *f, int n) {
+        struct thread *t = flow_thread(f);
+        const struct options *opts = t->opts;
+        struct rr_state *rr = flow_opaque(f);
 
         if (n == -1) {
                 PLOG_ERROR(t->cb, "read");
                 return false;
         }
-        if (n == 0) {
+        if (n == 0
+#ifdef WITH_IO_URING
+        || (t->use_uring && n == -ECONNRESET)
+#endif
+        ) {
                 flow_delete(f);
                 return false;
         }
@@ -311,6 +403,63 @@ static bool rr_do_recv(struct flow *f, uint32_t events, rr_recv_t rr_recv)
         // Transition to sending.
         rr->rr_xfer = rr_send_size(t);
         return true;
+}
+
+static bool rr_do_recv(struct flow *f, uint32_t events, rr_recv_t rr_recv)
+{
+        struct thread *t = flow_thread(f);
+        const struct options *opts = t->opts;
+        struct rr_state *rr = flow_opaque(f);
+
+#ifdef WITH_IO_URING
+        if (!t->use_uring)
+#endif
+        {
+                /* EPOLLERR might be marked if zerocopy is used, but should
+                * already be processed before reaching here.
+                */
+                if (events & ~(NEPER_EPOLL_MASK | EPOLLIN))
+                        LOG_ERROR(t->cb,
+                                "%s(): unknown event(s) %x", __func__, events);
+
+                if (events & NEPER_EPOLL_MASK) {
+                        flow_delete(f);
+                        return false;
+                }
+        }
+
+        ssize_t len = rr->rr_xfer;
+
+        if (len > opts->buffer_size)
+                len = opts->buffer_size;
+
+#ifdef WITH_IO_URING
+        if (t->use_uring) {
+                struct io_uring_sqe *sqe;
+
+                sqe = io_uring_get_sqe(&t->ring);
+                if (t->fn->fn_type == SOCK_DGRAM) {
+                        rr->iov.iov_base = (void*) flow_mbuf(f);
+                        rr->iov.iov_len = len;
+                        io_uring_prep_recvmsg(sqe, flow_fd(f), &rr->msg, 0);
+                } else {
+                        io_uring_prep_recv(sqe, flow_fd(f), flow_mbuf(f), len, 0);
+                }
+                return flow_uring_submit_sqe(flow_get_user_data(f), sqe);
+        }
+#endif
+
+        ssize_t n;
+        do {
+                n = rr_recv(f, flow_mbuf(f), len);
+        } while(n == -1 && errno == EINTR);
+
+#ifdef WITH_IO_URING
+        if (t->use_uring && n == 1)
+                return false;
+#endif
+
+        return rr_do_recv_done(f, n);
 }
 
 static void rr_snapshot(struct thread *t, struct neper_stat *stat,
@@ -371,6 +520,34 @@ static bool rr_do_compl(struct flow *f,
 
 /* The state machine for RR clients: */
 
+#ifdef WITH_IO_URING
+static void rr_client_state_1_done(struct flow_uring_req *f_req, int events)
+{
+        struct flow *f = f_req->f;
+        struct thread *t = flow_thread(f);
+
+        if (t->opts->tx_zerocopy && (events & EPOLLERR)) {
+                do_recvmsg_errqueue(t, f, events);
+                return;
+        }
+
+        if (rr_do_recv_done(f, events)) {
+                struct rr_state *rr = flow_opaque(f);
+
+                if (rr_do_compl(f, &rr->rr_ts_1, &rr->rr_ts_2))
+                        return;
+
+                bool sent = !t->opts->delay
+                                && !t->opts->noburst
+                                && rr_do_send(f, EPOLLOUT, rr_fn_send);
+                if (sent)
+                        return;
+
+                rr_client_state_0(f, 0);
+        }
+}
+#endif
+
 static void rr_client_state_1(struct flow *f, uint32_t events)
 {
         struct thread *t = flow_thread(f);
@@ -394,7 +571,22 @@ static void rr_client_state_1(struct flow *f, uint32_t events)
 
                 flow_mod(f, rr_client_state_0, EPOLLOUT, true);
         }
+#ifdef WITH_IO_URING
+        else if (t->use_uring) {
+                struct flow_uring_req *f_req = flow_get_user_data(f);
+                f_req->cb = rr_client_state_1_done;
+        }
+#endif
 }
+
+#ifdef WITH_IO_URING
+static void rr_client_state_0_done(struct flow_uring_req *f_req, int events)
+{
+        struct flow *f = f_req->f;
+        if (rr_do_send_done(f, events))
+                rr_client_state_1(f, 0);
+}
+#endif
 
 static void rr_client_state_0(struct flow *f, uint32_t events)
 {
@@ -413,9 +605,31 @@ static void rr_client_state_0(struct flow *f, uint32_t events)
                 return;
         if (rr_do_send(f, events, rr_fn_send))
                 flow_mod(f, rr_client_state_1, EPOLLIN, true);
+#ifdef WITH_IO_URING
+        else if (t->use_uring) {
+                struct flow_uring_req *f_req = flow_get_user_data(f);
+                f_req->cb = rr_client_state_0_done;
+        }
+#endif
 }
 
 /* The state machine for CRR clients: */
+
+#ifdef WITH_IO_URING
+static void crr_client_state_1_done(struct flow_uring_req *f_req, int events)
+{
+        struct flow *f = f_req->f;
+
+        if (rr_do_recv_done(f, events)) {
+                struct rr_state *rr = flow_opaque(f);
+
+                if (rr_do_compl(f, &rr->rr_ts_0, &rr->rr_ts_2))
+                        return;
+                flow_reconnect(f, crr_client_state_0, EPOLLOUT);
+                crr_client_state_0(f, 0);
+        }
+}
+#endif
 
 static void crr_client_state_1(struct flow *f, uint32_t events)
 {
@@ -433,7 +647,22 @@ static void crr_client_state_1(struct flow *f, uint32_t events)
                         return;
                 flow_reconnect(f, crr_client_state_0, EPOLLOUT);
         }
+#ifdef WITH_IO_URING
+        else if (t->use_uring) {
+                struct flow_uring_req *f_req = flow_get_user_data(f);
+                f_req->cb = crr_client_state_1_done;
+        }
+#endif
 }
+
+#ifdef WITH_IO_URING
+static void crr_client_state_0_done(struct flow_uring_req *f_req, int events)
+{
+        struct flow *f = f_req->f;
+        if (rr_do_send_done(f, events))
+                crr_client_state_1(f, 0);
+}
+#endif
 
 static void crr_client_state_0(struct flow *f, uint32_t events)
 {
@@ -450,9 +679,34 @@ static void crr_client_state_0(struct flow *f, uint32_t events)
         }
         if (rr_do_send(f, events, rr_fn_send))
                 flow_mod(f, crr_client_state_1, EPOLLIN, true);
+#ifdef WITH_IO_URING
+        else if (t->use_uring) {
+                struct flow_uring_req *f_req = flow_get_user_data(f);
+                f_req->cb = crr_client_state_0_done;
+        }
+#endif
 }
 
 /* The state machine for servers: */
+
+#ifdef WITH_IO_URING
+static void rr_server_state_2_done(struct flow_uring_req *f_req, int events)
+{
+        struct flow *f = f_req->f;
+        struct thread *t = flow_thread(f);
+        struct neper_stat *stat = flow_stat(f);
+        struct neper_histo *histo = stat ? stat->histo(stat) : NULL;
+
+        if (rr_do_send_done(f, events)) {
+                if (stat) {
+                        /* rr server has no meaningful latency to measure. */
+                        neper_histo_event(histo, 0.0);
+                        stat->event(t, stat, 1, false, rr_snapshot);
+                }
+                rr_server_state_0(f, 0);
+        }
+}
+#endif
 
 static void rr_server_state_2(struct flow *f, uint32_t events)
 {
@@ -474,12 +728,33 @@ static void rr_server_state_2(struct flow *f, uint32_t events)
                 }
                 flow_mod(f, rr_server_state_0, EPOLLIN, false);
         }
+#ifdef WITH_IO_URING
+        else if (t->use_uring) {
+                struct flow_uring_req *f_req = flow_get_user_data(f);
+                f_req->cb = rr_server_state_2_done;
+        }
+#endif
 }
 
 static void rr_server_state_1(struct flow *f)
 {
-        flow_mod(f, rr_server_state_2, EPOLLOUT, false);
+        struct thread *t = flow_thread(f);
+#ifdef WITH_IO_URING
+        if (t->use_uring)
+                rr_server_state_2(f, 0);
+        else
+#endif
+                flow_mod(f, rr_server_state_2, EPOLLOUT, false);
 }
+
+#ifdef WITH_IO_URING
+static void rr_server_state_0_done(struct flow_uring_req *f_req, int events)
+{
+        struct flow *f = f_req->f;
+        if (rr_do_recv_done(f, events))
+                rr_server_state_2(f, 0);
+}
+#endif
 
 static void rr_server_state_0(struct flow *f, uint32_t events)
 {
@@ -493,6 +768,12 @@ static void rr_server_state_0(struct flow *f, uint32_t events)
 
         if (rr_do_recv(f, events, rr->rr_recv))
                 rr_server_state_1(f);
+#ifdef WITH_IO_URING
+        else if (t->use_uring) {
+                struct flow_uring_req *f_req = flow_get_user_data(f);
+                f_req->cb = rr_server_state_0_done;
+        }
+#endif
 }
 
 /* These functions point the state machines at their first handler functions. */
@@ -528,11 +809,6 @@ void rr_flow_init(struct thread *t, int fd)
 
         rr_state_init(t, fd, state, event);
 }
-
-/*
- * Statistics. Ignore everything below this line, which (a) has not been
- * changed and (b) is about to be completely replaced.
- */
 
 static void rr_print_snap(struct thread *t, int flow_index, 
                           const struct neper_snap *snap, FILE *csv)

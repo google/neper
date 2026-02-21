@@ -418,7 +418,11 @@ void start_worker_threads(struct options *opts, struct callbacks *cb,
                 t[i].fn = fn;
                 t[i].ai_socktype = fn->fn_type;
                 t[i].ai = copy_addrinfo(ai);
-                t[i].epfd = epoll_create1_or_die(cb);
+#ifdef WITH_IO_URING
+                t[i].use_uring = opts->use_uring;
+                if (!t[i].use_uring)
+#endif
+                        t[i].epfd = epoll_create1_or_die(cb);
                 t[i].stop_efd = eventfd(0, 0);
                 if (t[i].stop_efd == -1)
                         PLOG_FATAL(cb, "eventfd");
@@ -454,6 +458,15 @@ void start_worker_threads(struct options *opts, struct callbacks *cb,
                 t[i].rl.pending_count = 0;
                 t[i].rl.next_event = ~0ULL;
                 t[i].rl.next_noburst_slot = 0;
+
+#ifdef WITH_IO_URING
+                if (t[i].use_uring) {
+                        /* 128 is a random guess based on maxevents default 1000 */
+                        s = io_uring_queue_init(128, &t[i].ring, 0);
+                        if (s < 0)
+                                LOG_FATAL(cb, "io_uring_queue_init: %s", strerror(-s));
+                }
+#endif
 
                 s = pthread_create(&t[i].id, &attr, thread_func, &t[i]);
                 if (s != 0)
@@ -549,6 +562,10 @@ static void free_worker_threads(int num_threads, struct thread *t)
         int i;
 
         for (i = 0; i < num_threads; i++) {
+#ifdef WITH_IO_URING
+                if (t[i].use_uring)
+                        io_uring_queue_exit(&t[i].ring);
+#endif
                 do_close(t[i].stop_efd);
                 free(t[i].ai);
                 t[i].rusage->fini(t[i].rusage);

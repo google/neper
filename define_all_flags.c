@@ -60,6 +60,8 @@ struct flags_parser *add_flags_common(struct flags_parser *fp)
         DEFINE_FLAG(fp, bool,         time_wait,     false,    0,  "Do not set SO_LINGER 0. Close gracefully. Active peer will enter TIME_WAIT state");
         DEFINE_FLAG(fp, unsigned long, iostat_ms,    0,        0,  "Print io stats snapshot every this many ms");
         DEFINE_FLAG(fp, unsigned long, wait_start,   0,        0,  "Wait this many seconds before starting any data flows.");
+        DEFINE_FLAG(fp, bool,          use_uring,    false,   'O', "Should use uring for both tx/rx path");
+        DEFINE_FLAG(fp, int,           uring_size,   128,      0,  "io_uring size");
 
         /* Return the updated fp */
         return (fp);
@@ -132,6 +134,7 @@ struct flags_parser *add_flags_tcp_rr(struct flags_parser *fp)
         DEFINE_FLAG(fp, bool,          reuseaddr,       false,   0, "Use SO_REUSEADDR on sockets");
         DEFINE_FLAG(fp, unsigned long, noburst,         0,       0, "noburst interval in ns (default), us, ms, or s");
         DEFINE_FLAG_PARSER(fp,         noburst, parse_duration);
+        DEFINE_FLAG(fp, int,           iov_len,         0,       0, "Number of bytes to put in 1 iovec");
 
         /* Return the updated fp */
         return (fp);

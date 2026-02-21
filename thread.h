@@ -22,6 +22,11 @@
 #include <pthread.h>
 #include <stdint.h>
 
+#ifdef WITH_IO_URING
+#include <liburing.h>
+#include <liburing/io_uring.h>
+#endif
+
 #include "lib.h"
 
 struct addrinfo;
@@ -138,6 +143,11 @@ struct thread {
         int64_t gap_ns;
         struct rtt_log *rtt_logs;
         long rtt_log_capacity;
+
+#ifdef WITH_IO_URING
+        int use_uring;
+        struct io_uring ring;
+#endif
 };
 
 int thread_stats_events(const struct thread *);

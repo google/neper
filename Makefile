@@ -64,6 +64,11 @@ psp_rr-objs := psp_rr_main.o psp_rr.o rr.o psp_lib.o $(lib)
 
 ext-libs := -lm -lrt -lpthread
 
+ifeq ($(WITH_IO_URING),1)
+	CFLAGS += -DWITH_IO_URING
+	ext-libs += -luring
+endif
+
 tcp_rr: $(tcp_rr-objs)
 	$(CC) $(LDFLAGS) -o $@ $^ $(ext-libs)
 

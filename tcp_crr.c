@@ -41,6 +41,10 @@ int tcp_crr(struct options *opts, struct callbacks *cb)
         /* tcp_crr server doesn't collect stats, as it uses too much memory. */
         if (!opts->client)
                 opts->nostats = true;
+#ifdef WITH_IO_URING
+        if (opts->use_uring)
+                io_uring_init_main_ring(opts);
+#endif
         return run_main_thread(opts, cb, fn);
 }
 /* clang-format on */

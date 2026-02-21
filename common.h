@@ -173,5 +173,11 @@ const struct rate_conversion *auto_unit(const double throughput,
 
 int do_recvmsg_errqueue(struct thread *t, struct flow *f, uint32_t events);
 
+#ifdef WITH_IO_URING
+struct io_uring;
+void io_uring_init_main_ring(struct options *opts);
+struct io_uring *io_uring_get_main_ring();
+#endif
+
 #endif
 /* clang-format on */

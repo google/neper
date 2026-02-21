@@ -38,6 +38,10 @@ static const struct neper_fn server_fn = {
 int tcp_rr(struct options *opts, struct callbacks *cb)
 {
         const struct neper_fn *fn = opts->client ? &client_fn : &server_fn;
+#ifdef WITH_IO_URING
+        if (opts->use_uring)
+                io_uring_init_main_ring(opts);
+#endif
         return run_main_thread(opts, cb, fn);
 }
 /* clang-format on */

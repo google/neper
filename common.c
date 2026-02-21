@@ -352,6 +352,19 @@ int create_suicide_timeout(int sec_to_suicide)
         return 0;
 }
 
+#ifdef WITH_IO_URING
+static struct io_uring s_main_ring;
+void io_uring_init_main_ring(struct options *opts)
+{
+        io_uring_queue_init(opts->uring_size, &s_main_ring, 0);
+}
+
+struct io_uring *io_uring_get_main_ring()
+{
+        return &s_main_ring;
+}
+#endif
+
 static void process_cmsg(struct flow *f, struct callbacks *cb,
                          struct cmsghdr *cmsg)
 {
