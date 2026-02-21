@@ -31,6 +31,7 @@ lib := \
 	flow.o \
 	hexdump.o \
 	histo.o \
+	irq.o \
 	logging.o \
 	loop.o \
 	or_die.o \

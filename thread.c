@@ -27,6 +27,7 @@
 #include "cpuinfo.h"
 #include "flow.h"
 #include "histo.h"
+#include "irq.h"
 #include "logging.h"
 #include "loop.h"
 #include "percentiles.h"
@@ -570,6 +571,11 @@ int run_main_thread(struct options *opts, struct callbacks *cb,
         struct rusage rusage_start; /* updated when first packet comes */
         struct rusage rusage_end; /* local to this function, never pass out */
 
+        struct stats_irq irqs_start; /* updated when first packet comes */
+        struct stats_irq irqs_end; /* local to this function, never pass out */
+        struct timespec time_end;
+        double elapsed_time;
+
         struct addrinfo *ai;
         struct thread *ts; /* worker threads */
         struct control_plane *cp;
@@ -610,6 +616,8 @@ int run_main_thread(struct options *opts, struct callbacks *cb,
         if (opts->client)
                 sleep(opts->wait_start);
 
+        get_proc_interrupts(&irqs_start);
+
         /* start threads *after* control plane is up, to reuse addrinfo. */
         reset_port(ai, atoi(opts->port), cb);
         ts = calloc(opts->num_threads, sizeof(struct thread));
@@ -630,6 +638,9 @@ int run_main_thread(struct options *opts, struct callbacks *cb,
         stop_worker_threads(cb, opts->num_threads, ts, &ready_barrier,
                             &loop_init_c, &loop_init_m);
         LOG_INFO(cb, "stopped worker threads");
+        get_proc_interrupts(&irqs_end);
+        common_gettime(&time_end);
+        elapsed_time = seconds_between(&time_start, &time_end);
 
         PRINT(cb, "invalid_secret_count", "%d", control_plane_incidents(cp));
 
@@ -656,6 +667,18 @@ int run_main_thread(struct options *opts, struct callbacks *cb,
         PRINT(cb, "nvcsw_end", "%ld", rusage_end.ru_nvcsw);
         PRINT(cb, "nivcsw_start", "%ld", rusage_start.ru_nivcsw);
         PRINT(cb, "nivcsw_end", "%ld", rusage_end.ru_nivcsw);
+        PRINT(cb, "hw_irq_start", "%ld", irqs_start.hardirq);
+        PRINT(cb, "hw_irq_end", "%ld", irqs_end.hardirq);
+        PRINT(cb, "tx_sw_irq_start", "%u", irqs_start.tx_softirq);
+        PRINT(cb, "tx_sw_irq_end", "%u", irqs_end.tx_softirq);
+        PRINT(cb, "rx_sw_irq_start", "%u", irqs_start.rx_softirq);
+        PRINT(cb, "rx_sw_irq_end", "%u", irqs_end.rx_softirq);
+        PRINT(cb, "hw_irq_rate", "%f",
+              (irqs_end.hardirq - irqs_start.hardirq) / elapsed_time);
+        PRINT(cb, "tx_sw_irq_rate", "%f",
+              (irqs_end.tx_softirq - irqs_start.tx_softirq) / elapsed_time);
+        PRINT(cb, "rx_sw_irq_rate", "%f",
+              (irqs_end.rx_softirq - irqs_start.rx_softirq) / elapsed_time);
         pthread_mutex_unlock(&time_start_mutex);
         /* end printing rusage */
 
