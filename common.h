@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #ifndef THIRD_PARTY_NEPER_COMMON_H
 #define THIRD_PARTY_NEPER_COMMON_H
 
@@ -168,4 +170,14 @@ void print_unit(const char *name, const void *var, struct callbacks *);
 const struct rate_conversion *auto_unit(const double throughput,
                                         const struct rate_conversion *opt,
                                         struct callbacks *);
+
+int do_recvmsg_errqueue(struct thread *t, struct flow *f, uint32_t events);
+
+#ifdef WITH_IO_URING
+struct io_uring;
+void io_uring_init_main_ring(struct options *opts);
+struct io_uring *io_uring_get_main_ring();
 #endif
+
+#endif
+/* clang-format on */

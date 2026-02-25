@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #include "stats.h"
 #include "coef.h"
 #include "common.h"
@@ -289,3 +291,4 @@ struct neper_stats *neper_stats_init(struct callbacks *cb)
 
         return stats;
 }
+/* clang-format on */

@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #include "coef.h"
 #include "common.h"
 
@@ -102,3 +104,4 @@ struct neper_coef *neper_coef(void)
 
         return coef;
 }
+/* clang-format on */

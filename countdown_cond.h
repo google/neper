@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #ifndef _COUNTDOWN_COND_H
 #define _COUNTDOWN_COND_H
 
@@ -92,3 +94,4 @@ static inline void countdown_cond_wait(struct countdown_cond *cc)
 }
 
 #endif
+/* clang-format on */

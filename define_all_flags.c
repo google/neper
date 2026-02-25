@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #include "common.h"
 #include "flags.h"
 #include "lib.h"
@@ -54,9 +56,12 @@ struct flags_parser *add_flags_common(struct flags_parser *fp)
         DEFINE_FLAG(fp, const char *, all_samples,   NULL,    'A', "Print all samples? If yes, this is the output file name");
         DEFINE_FLAG_HAS_OPTIONAL_ARGUMENT(fp, all_samples);
         DEFINE_FLAG_PARSER(fp,        all_samples, parse_all_samples);
+        DEFINE_FLAG_NAMED(fp, bool,    tx_zerocopy,     false, "zerocopy", 'Z', "Set MSG_ZEROCOPY when sending");
         DEFINE_FLAG(fp, bool,         time_wait,     false,    0,  "Do not set SO_LINGER 0. Close gracefully. Active peer will enter TIME_WAIT state");
         DEFINE_FLAG(fp, unsigned long, iostat_ms,    0,        0,  "Print io stats snapshot every this many ms");
         DEFINE_FLAG(fp, unsigned long, wait_start,   0,        0,  "Wait this many seconds before starting any data flows.");
+        DEFINE_FLAG(fp, bool,          use_uring,    false,   'O', "Should use uring for both tx/rx path");
+        DEFINE_FLAG(fp, int,           uring_size,   128,      0,  "io_uring size");
 
         /* Return the updated fp */
         return (fp);
@@ -112,7 +117,6 @@ struct flags_parser *add_flags_stream(struct flags_parser *fp)
         DEFINE_FLAG(fp, int,           test_length,     10,      'l', "Test length in seconds");
         DEFINE_FLAG(fp, bool,          edge_trigger,    false,   'E', "Edge-triggered epoll");
         DEFINE_FLAG(fp, bool,          reuseaddr,       false,   'R', "Use SO_REUSEADDR on sockets");
-        DEFINE_FLAG_NAMED(fp, bool,    tx_zerocopy,     false, "zerocopy", 'Z', "Set MSG_ZEROCOPY when sending");
         DEFINE_FLAG(fp, const struct rate_conversion *, throughput_opt, neper_units_mb_pointer_hack, 0, "Units to display for throughput");
         DEFINE_FLAG_PARSER(fp,                          throughput_opt, parse_unit);
         DEFINE_FLAG_PRINTER(fp,                         throughput_opt, print_unit);
@@ -130,6 +134,7 @@ struct flags_parser *add_flags_tcp_rr(struct flags_parser *fp)
         DEFINE_FLAG(fp, bool,          reuseaddr,       false,   0, "Use SO_REUSEADDR on sockets");
         DEFINE_FLAG(fp, unsigned long, noburst,         0,       0, "noburst interval in ns (default), us, ms, or s");
         DEFINE_FLAG_PARSER(fp,         noburst, parse_duration);
+        DEFINE_FLAG(fp, int,           iov_len,         0,       0, "Number of bytes to put in 1 iovec");
 
         /* Return the updated fp */
         return (fp);
@@ -183,3 +188,4 @@ struct flags_parser *add_flags_udp_stream(struct flags_parser *fp)
         return (fp);
 }
 
+/* clang-format on */

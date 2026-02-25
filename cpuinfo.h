@@ -13,6 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+/* clang-format off */
 #include "lib.h"
 
 #ifndef THIRD_PARTY_NEPER_CPUINFO_H
@@ -35,3 +37,4 @@ struct cpuinfo {
 int get_cpuinfo(struct cpuinfo *cpus, int max_cpus, struct callbacks *cb);
 
 #endif
+/* clang-format on */

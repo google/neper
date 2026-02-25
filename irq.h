@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 Google Inc.
+ * Copyright 2021 Google Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,15 +16,20 @@
 
 /* clang-format off */
 
-#ifndef THIRD_PARTY_NEPER_SOCKET_H
-#define THIRD_PARTY_NEPER_SOCKET_H
+#ifndef THIRD_PARTY_NEPER_IRQ_H
+#define THIRD_PARTY_NEPER_IRQ_H
 
-struct thread;
+#include <stdbool.h>
+#include <stdint.h>
 
-void socket_listen(struct thread *);
+struct stats_irq {
+  unsigned long hardirq;
+  unsigned int tx_softirq;
+  unsigned int rx_softirq;
+};
 
-int  socket_connect_one(struct thread *, int flags);
-void socket_connect_all(struct thread *);
+void get_proc_interrupts(struct stats_irq *irqs);
 
 #endif
+
 /* clang-format on */

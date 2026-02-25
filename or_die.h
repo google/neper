@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #ifndef THIRD_PARTY_NEPER_OR_DIE_H
 #define THIRD_PARTY_NEPER_OR_DIE_H
 
@@ -36,3 +38,4 @@ void *realloc_or_die(void *ptr, size_t, struct callbacks *);
 int socket_or_die(int domain, int type, int protocol, struct callbacks *);
 
 #endif
+/* clang-format on */

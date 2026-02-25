@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #ifndef THIRD_PARTY_NEPER_PQ_H
 #define THIRD_PARTY_NEPER_PQ_H
 
@@ -44,3 +46,4 @@ struct neper_pq *neper_pq(double (*cmp)(void *, void *), uint32_t maxlen,
                           struct callbacks *);
 
 #endif
+/* clang-format on */

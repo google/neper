@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #ifndef THIRD_PARTY_NEPER_RR_H
 #define THIRD_PARTY_NEPER_RR_H
 
@@ -24,3 +26,4 @@ void rr_flow_init(struct thread *, int fd);
 int rr_report_stats(struct thread *);
 
 #endif
+/* clang-format on */

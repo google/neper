@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #include "stream.h"
 
 #include "coef.h"
@@ -149,6 +151,10 @@ void stream_handler(struct flow *f, uint32_t events)
                  * e.g. Linux kernel tools/testing/selftests/net/msg_zerocopy.c
                  */
         }
+        // Process error queue for TX_ZEROCOPY case.
+        if (events & EPOLLERR)
+                do_recvmsg_errqueue(t, f, events);
+
         if (opts->split_bidir && !opts->client &&
             events & EPOLLOUT && events & EPOLLOUT) {
                 /* See comments in flow.c on bidirectional traffic:
@@ -223,3 +229,4 @@ void stream_flow_init(struct thread *t, int fd)
 	if (t->opts->rx_zerocopy)
 		flow_init_rx_zerocopy(f, t->opts->buffer_size, t->cb);
 }
+/* clang-format on */

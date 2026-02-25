@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #ifndef PSP_KERNEL_H_
 #define PSP_KERNEL_H_
 
@@ -47,3 +49,4 @@ struct psp_spi_tuple {
 };
 
 #endif  // PSP_KERNEL_H_
+/* clang-format on */

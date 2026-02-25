@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #ifndef THIRD_PARTY_NEPER_HEXDUMP_H
 #define THIRD_PARTY_NEPER_HEXDUMP_H
 
@@ -22,3 +24,4 @@
 char *hexdump(const char *in, size_t in_len, char *out, size_t out_len);
 
 #endif
+/* clang-format on */

@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #include "common.h"
 #include "flags.h"
 #include "lib.h"
@@ -64,3 +66,4 @@ exit:
         logging_exit(&cb);
         return exit_code;
 }
+/* clang-format on */

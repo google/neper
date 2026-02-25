@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #ifndef THIRD_PARTY_NEPER_LOOP_H
 #define THIRD_PARTY_NEPER_LOOP_H
 
@@ -22,3 +24,4 @@ struct thread;
 void *loop(struct thread *);
 
 #endif
+/* clang-format on */

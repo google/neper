@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #include "common.h"
 #include "or_die.h"
 
@@ -104,3 +106,4 @@ int socket_or_die(int domain, int type, int protocol, struct callbacks *cb)
                 PLOG_FATAL(cb, "socket");
         return s;
 }
+/* clang-format on */

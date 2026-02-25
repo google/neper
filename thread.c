@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #include <sched.h>
 #include <stdint.h>
 #include <sys/epoll.h>
@@ -25,6 +27,7 @@
 #include "cpuinfo.h"
 #include "flow.h"
 #include "histo.h"
+#include "irq.h"
 #include "logging.h"
 #include "loop.h"
 #include "percentiles.h"
@@ -417,7 +420,11 @@ void start_worker_threads(struct options *opts, struct callbacks *cb,
                 t[i].fn = fn;
                 t[i].ai_socktype = fn->fn_type;
                 t[i].ai = copy_addrinfo(ai);
-                t[i].epfd = epoll_create1_or_die(cb);
+#ifdef WITH_IO_URING
+                t[i].use_uring = opts->use_uring;
+                if (!t[i].use_uring)
+#endif
+                        t[i].epfd = epoll_create1_or_die(cb);
                 t[i].stop_efd = eventfd(0, 0);
                 if (t[i].stop_efd == -1)
                         PLOG_FATAL(cb, "eventfd");
@@ -453,6 +460,15 @@ void start_worker_threads(struct options *opts, struct callbacks *cb,
                 t[i].rl.pending_count = 0;
                 t[i].rl.next_event = ~0ULL;
                 t[i].rl.next_noburst_slot = 0;
+
+#ifdef WITH_IO_URING
+                if (t[i].use_uring) {
+                        /* 128 is a random guess based on maxevents default 1000 */
+                        s = io_uring_queue_init(128, &t[i].ring, 0);
+                        if (s < 0)
+                                LOG_FATAL(cb, "io_uring_queue_init: %s", strerror(-s));
+                }
+#endif
 
                 s = pthread_create(&t[i].id, &attr, thread_func, &t[i]);
                 if (s != 0)
@@ -548,6 +564,10 @@ static void free_worker_threads(int num_threads, struct thread *t)
         int i;
 
         for (i = 0; i < num_threads; i++) {
+#ifdef WITH_IO_URING
+                if (t[i].use_uring)
+                        io_uring_queue_exit(&t[i].ring);
+#endif
                 do_close(t[i].stop_efd);
                 free(t[i].ai);
                 t[i].rusage->fini(t[i].rusage);
@@ -569,6 +589,11 @@ int run_main_thread(struct options *opts, struct callbacks *cb,
 
         struct rusage rusage_start; /* updated when first packet comes */
         struct rusage rusage_end; /* local to this function, never pass out */
+
+        struct stats_irq irqs_start; /* updated when first packet comes */
+        struct stats_irq irqs_end; /* local to this function, never pass out */
+        struct timespec time_end;
+        double elapsed_time;
 
         struct addrinfo *ai;
         struct thread *ts; /* worker threads */
@@ -610,6 +635,8 @@ int run_main_thread(struct options *opts, struct callbacks *cb,
         if (opts->client)
                 sleep(opts->wait_start);
 
+        get_proc_interrupts(&irqs_start);
+
         /* start threads *after* control plane is up, to reuse addrinfo. */
         reset_port(ai, atoi(opts->port), cb);
         ts = calloc(opts->num_threads, sizeof(struct thread));
@@ -630,6 +657,9 @@ int run_main_thread(struct options *opts, struct callbacks *cb,
         stop_worker_threads(cb, opts->num_threads, ts, &ready_barrier,
                             &loop_init_c, &loop_init_m);
         LOG_INFO(cb, "stopped worker threads");
+        get_proc_interrupts(&irqs_end);
+        common_gettime(&time_end);
+        elapsed_time = seconds_between(&time_start, &time_end);
 
         PRINT(cb, "invalid_secret_count", "%d", control_plane_incidents(cp));
 
@@ -656,6 +686,18 @@ int run_main_thread(struct options *opts, struct callbacks *cb,
         PRINT(cb, "nvcsw_end", "%ld", rusage_end.ru_nvcsw);
         PRINT(cb, "nivcsw_start", "%ld", rusage_start.ru_nivcsw);
         PRINT(cb, "nivcsw_end", "%ld", rusage_end.ru_nivcsw);
+        PRINT(cb, "hw_irq_start", "%ld", irqs_start.hardirq);
+        PRINT(cb, "hw_irq_end", "%ld", irqs_end.hardirq);
+        PRINT(cb, "tx_sw_irq_start", "%u", irqs_start.tx_softirq);
+        PRINT(cb, "tx_sw_irq_end", "%u", irqs_end.tx_softirq);
+        PRINT(cb, "rx_sw_irq_start", "%u", irqs_start.rx_softirq);
+        PRINT(cb, "rx_sw_irq_end", "%u", irqs_end.rx_softirq);
+        PRINT(cb, "hw_irq_rate", "%f",
+              (irqs_end.hardirq - irqs_start.hardirq) / elapsed_time);
+        PRINT(cb, "tx_sw_irq_rate", "%f",
+              (irqs_end.tx_softirq - irqs_start.tx_softirq) / elapsed_time);
+        PRINT(cb, "rx_sw_irq_rate", "%f",
+              (irqs_end.rx_softirq - irqs_start.rx_softirq) / elapsed_time);
         pthread_mutex_unlock(&time_start_mutex);
         /* end printing rusage */
 
@@ -691,3 +733,4 @@ int run_main_thread(struct options *opts, struct callbacks *cb,
         free(data_pending);
         return ret;
 }
+/* clang-format on */

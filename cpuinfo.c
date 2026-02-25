@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -87,3 +89,4 @@ int get_cpuinfo(struct cpuinfo *cpus, int max_cpus, struct callbacks *cb)
         fclose(f);
         return n;
 }
+/* clang-format on */

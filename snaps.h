@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #ifndef THIRD_PARTY_NEPER_SNAPS_H
 #define THIRD_PARTY_NEPER_SNAPS_H
 
@@ -77,3 +79,4 @@ struct neper_snaps *neper_snaps_init(struct neper_rusage *,
                                      int total, int extra);
 
 #endif
+/* clang-format on */

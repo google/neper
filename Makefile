@@ -31,6 +31,7 @@ lib := \
 	flow.o \
 	hexdump.o \
 	histo.o \
+	irq.o \
 	logging.o \
 	loop.o \
 	or_die.o \
@@ -62,6 +63,11 @@ psp_crr-objs := psp_crr_main.o psp_crr.o rr.o psp_lib.o $(lib)
 psp_rr-objs := psp_rr_main.o psp_rr.o rr.o psp_lib.o $(lib)
 
 ext-libs := -lm -lrt -lpthread
+
+ifeq ($(WITH_IO_URING),1)
+	CFLAGS += -DWITH_IO_URING
+	ext-libs += -luring
+endif
 
 tcp_rr: $(tcp_rr-objs)
 	$(CC) $(LDFLAGS) -o $@ $^ $(ext-libs)

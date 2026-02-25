@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #ifndef THIRD_PARTY_NEPER_STATS_H
 #define THIRD_PARTY_NEPER_STATS_H
 
@@ -79,3 +81,4 @@ struct neper_stats {
 struct neper_stats *neper_stats_init(struct callbacks *);
 
 #endif
+/* clang-format on */

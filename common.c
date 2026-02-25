@@ -14,8 +14,11 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #include <fcntl.h>
 #include <netinet/tcp.h>
+#include <linux/errqueue.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,9 +26,11 @@
 #include <sys/mman.h>
 
 #include "common.h"
+#include "flow.h"
 #include "lib.h"
 #include "logging.h"
 #include "or_die.h"
+#include "thread.h"
 
 #define kilo (1000)
 #define kibi (1024)
@@ -346,3 +351,100 @@ int create_suicide_timeout(int sec_to_suicide)
         }
         return 0;
 }
+
+#ifdef WITH_IO_URING
+static struct io_uring s_main_ring;
+void io_uring_init_main_ring(struct options *opts)
+{
+        io_uring_queue_init(opts->uring_size, &s_main_ring, 0);
+}
+
+struct io_uring *io_uring_get_main_ring()
+{
+        return &s_main_ring;
+}
+#endif
+
+static void process_cmsg(struct flow *f, struct callbacks *cb,
+                         struct cmsghdr *cmsg)
+{
+        struct sock_extended_err *err;
+
+        switch(cmsg->cmsg_level) {
+        case SOL_IP:
+        case SOL_IPV6:
+                switch (cmsg->cmsg_type) {
+                case IP_RECVERR:
+                case IPV6_RECVERR:
+                {
+                        err = (struct sock_extended_err *)CMSG_DATA(cmsg);
+                        switch (err->ee_origin) {
+                        case SO_EE_ORIGIN_ZEROCOPY:
+                        {
+                                uint32_t lo = err->ee_info;
+                                uint32_t hi = err->ee_data;
+                                uint64_t stat_zcopies = 0;
+                                int ee_copy_event = 0;
+
+                                if (err->ee_code & SO_EE_CODE_ZEROCOPY_COPIED)
+                                        ee_copy_event = 1;
+                                else
+                                        stat_zcopies = hi - lo + 1;
+
+                                flow_update_zstat(f, stat_zcopies,
+                                                  ee_copy_event);
+                                break;
+                        }
+                        default:
+                                LOG_ERROR(cb, "unsupported ee_origin %u\n",
+                                          err->ee_origin);
+                                break;
+                        }
+                        break;
+                }
+                default:
+                        LOG_ERROR(cb, "unsupported cmsg type: %u\n",
+                                  cmsg->cmsg_type);
+                }
+                break;
+
+        default:
+                LOG_ERROR(cb, "unsupported cmsg level: %u\n", cmsg->cmsg_level);
+        }
+}
+
+// This function is used to process error queue when TX_ZEROCOPY is used.
+int do_recvmsg_errqueue(struct thread *t, struct flow *f, uint32_t events)
+{
+        /*
+         * Right now we only process ZEROCOPY related cmsg.
+         */
+        char control[CMSG_SPACE(sizeof(struct sockaddr_in6)) +
+                     CMSG_SPACE(sizeof(struct sock_extended_err))];
+        struct msghdr msg = {
+                .msg_control = control,
+                .msg_controllen = sizeof(control),
+        };
+        struct cmsghdr *cmsg;
+        int fd = flow_fd(f);
+        ssize_t n;
+
+        if (events & EPOLLERR) {
+                do {
+                        n = recvmsg(fd, &msg, MSG_ERRQUEUE);
+                } while(n == -1 && errno == EINTR);
+                if (n == -1) {
+                        if (errno != EAGAIN)
+                                LOG_WARN(t->cb,
+                                         "recvmsg() on ERRQUEUE failed: %s\n",
+                                         strerror(errno));
+                        return errno;
+                }
+                for (cmsg = CMSG_FIRSTHDR(&msg); cmsg;
+                     cmsg = CMSG_NXTHDR(&msg, cmsg))
+                        process_cmsg(f, t->cb, cmsg);
+        }
+        return 0;
+}
+
+/* clang-format on */

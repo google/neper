@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #ifndef THIRD_PARTY_NEPER_PERCENTILES_H
 #define THIRD_PARTY_NEPER_PERCENTILES_H
 
@@ -28,3 +30,4 @@ void percentiles_parse(const char *arg, void *out, struct callbacks *);
 void percentiles_print(const char *name, const void *var, struct callbacks *);
 
 #endif
+/* clang-format on */

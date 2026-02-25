@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #include "control_plane.h"
 #include <netinet/tcp.h>
 #include <inttypes.h>
@@ -514,3 +516,4 @@ void control_plane_destroy(struct control_plane *cp)
 {
         free(cp);
 }
+/* clang-format on */

@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #ifndef THIRD_PARTY_NEPER_LIB_H
 #define THIRD_PARTY_NEPER_LIB_H
 
@@ -136,6 +138,10 @@ struct options {
         /* rr */
         const char *log_rtt;
         int logrtt_entries_per_flow;
+
+        bool use_uring;
+        int uring_size;
+        int iov_len;
 };
 
 #ifdef __cplusplus
@@ -156,3 +162,4 @@ int psp_crr(struct options *, struct callbacks *);
 #endif
 
 #endif
+/* clang-format on */

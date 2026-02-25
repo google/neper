@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #include "snaps.h"
 #include "common.h"
 #include "print.h"
@@ -128,3 +130,4 @@ struct neper_snaps *neper_snaps_init(struct neper_rusage *rusage,
 
         return snaps;
 }
+/* clang-format on */

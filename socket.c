@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #include "common.h"
 #include "flow.h"
 #include "socket.h"
@@ -352,3 +354,4 @@ void socket_connect_all(struct thread *t)
                 t->fn->fn_flow_init(t, s);
         }
 }
+/* clang-format on */

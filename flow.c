@@ -14,13 +14,21 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #include <linux/tcp.h>
 #include <linux/version.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <sys/mman.h>
 #include <time.h>
+#include <time.h>
 #include <unistd.h>
+#include <stdio.h>
+#ifdef WITH_IO_URING
+#include <liburing.h>
+#include <liburing/io_uring.h>
+#endif
 
 #include "common.h"
 #include "flow.h"
@@ -52,7 +60,13 @@ struct flow {
 	void *f_rx_zerocopy_buffer;
 	size_t f_rx_zerocopy_buffer_sz;
 
+        struct zerocopy_stat z_stat;
+
         long rtt_log_count;
+
+#ifdef WITH_IO_URING
+        void *user_data;
+#endif
 };
 
 int flow_fd(const struct flow *f)
@@ -159,7 +173,53 @@ void flow_increment_rtt_log_count(struct flow *f)
         f->rtt_log_count++;
 }
 
-struct flow *flow_create(const struct flow_create_args *args)
+#ifdef WITH_IO_URING
+void *flow_get_user_data(const struct flow *f) {
+        return f->user_data;
+}
+
+void flow_set_user_data(struct flow *f, void *user_data) {
+        f->user_data = user_data;
+}
+
+int flow_uring_submit_sqe(struct flow_uring_req *f_req,
+                                struct io_uring_sqe *sqe) {
+        io_uring_sqe_set_data(sqe, f_req);
+        return 0;
+}
+
+int flow_uring_handle_completions(struct thread *t, struct timespec *timeout) {
+        int ret;
+        struct flow_uring_req *f_req;
+        struct io_uring_cqe *cqe;
+
+        ret = io_uring_peek_cqe(&t->ring, &cqe);
+        if (ret < 0) {
+                if (!timeout) {
+                        ret = io_uring_submit_and_wait(&t->ring, 1);
+                        return ret;
+                } else if (!timespec_is_zero(timeout)) {
+                        struct __kernel_timespec ts;
+                        ts.tv_sec = timeout->tv_sec;
+                        ts.tv_nsec = timeout->tv_nsec;
+                        ret = io_uring_submit_and_wait_timeout(&t->ring,
+                                        &cqe, 1, &ts, NULL);
+                }
+        }
+
+        if (ret >= 0) {
+                f_req = (struct flow_uring_req*) io_uring_cqe_get_data(cqe);
+                ret = cqe->res;
+                io_uring_cqe_seen(&t->ring, cqe);
+                if (f_req->cb) {
+                        f_req->cb(f_req, ret);
+                }
+        }
+        return ret;
+}
+#endif
+
+void *flow_create(const struct flow_create_args *args)
 {
         struct thread *t = args->thread;
         struct flow *f = calloc_or_die(1, sizeof(struct flow), t->cb);
@@ -201,6 +261,11 @@ struct flow *flow_create(const struct flow_create_args *args)
          */
         if (t->opts->split_bidir && t->opts->client)
                 events &= (f->f_id & 1) ? EPOLLOUT : EPOLLIN;
+
+#ifdef WITH_IO_URING
+        if (t->use_uring)
+                return f;
+#endif
 
         flow_ctl(f, EPOLL_CTL_ADD, args->handler, events, true);
 	return f;
@@ -345,6 +410,17 @@ void flow_update_next_event(struct flow *f, uint64_t duration)
         f->f_next_event += duration;
 }
 
+void flow_update_zstat(struct flow *f, uint64_t zerocopied_bytes, int ee_copied)
+{
+        f->z_stat.bytes += zerocopied_bytes;
+        f->z_stat.ee_copied_events += ee_copied;
+}
+
+const struct zerocopy_stat *flow_get_zstat(const struct flow *f)
+{
+        return &f->z_stat;
+}
+
 ssize_t flow_recv_zerocopy(struct flow *f, void *copybuf, size_t copybuf_len) {
         struct tcp_zerocopy_receive zc = {0};
         socklen_t zc_len = sizeof(zc);
@@ -395,3 +471,4 @@ ssize_t flow_recv_zerocopy(struct flow *f, void *copybuf, size_t copybuf_len) {
 #endif
         return n_read;
 }
+/* clang-format on */

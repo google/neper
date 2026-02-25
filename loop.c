@@ -14,7 +14,13 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #include <time.h>
+
+#ifdef WITH_IO_URING
+#include <sys/eventfd.h>
+#endif
 
 #include "common.h"
 #include "flow.h"
@@ -48,7 +54,10 @@ void *loop(struct thread *t)
                 .stat    = NULL
         };
 
-        flow_create(&args);
+#ifdef WITH_IO_URING
+        if (!t->use_uring)
+#endif
+                flow_create(&args);
 
         /* Server sockets must be created in order
          * so that the ebpf filter works.
@@ -80,6 +89,25 @@ void *loop(struct thread *t)
                 /* Passing a NULL timeout causes us to block indefinitely. */
                 struct timespec *poll_timeout = indefinite ? NULL : &timeout;
 
+#ifdef WITH_IO_URING
+                if (t->use_uring) {
+                        int ret;
+
+                        ret = flow_uring_handle_completions(t, poll_timeout);
+
+                        if (ret < 0 && ret != -EINTR && ret != -ETIME) {
+                                PLOG_FATAL(t->cb, "flow_uring_handle_completions ret %d\n", ret);
+                        }
+                        /* Read eventfd if there is a stop. This is a bit
+                         * hacky, but avoids creating a io_uring request just
+                         * for eventfd.
+                         */
+                        if (eventfd_read(t->stop_efd, (eventfd_t *)&ret) == 0)
+                                t->stop = 1;
+                        continue;
+                }
+#endif
+
                 int nfds = t->poll_func(t->epfd, events, opts->maxevents, poll_timeout);
                 int i;
 
@@ -93,10 +121,14 @@ void *loop(struct thread *t)
         }
         thread_flush_stat(t);
         free(events);
-        do_close(t->epfd);
+#ifdef WITH_IO_URING
+        if (!t->use_uring)
+#endif
+                do_close(t->epfd);
 
         /* TODO: The first flow object is leaking here... */
 
         /* This is technically a thread callback so it must return a (void *) */
         return NULL;
 }
+/* clang-format on */

@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #ifndef THIRD_PARTY_NEPER_FLOW_H
 #define THIRD_PARTY_NEPER_FLOW_H
 
@@ -22,6 +24,10 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <time.h>
+#ifdef WITH_IO_URING
+#include <liburing.h>
+#include <liburing/io_uring.h>
+#endif
 
 struct flow;  /* note: struct is defined opaquely within flow.c */
 struct neper_stat;
@@ -33,6 +39,12 @@ struct rtt_log {
         int flow_id;
         struct timespec timestamp;
 };
+
+#ifdef WITH_IO_URING
+struct flow_uring_req;
+
+typedef void (*req_handler)(struct flow_uring_req *, int);
+#endif
 
 typedef void (*flow_handler)(struct flow *, uint32_t);
 
@@ -63,7 +75,32 @@ struct flow_create_args {
         struct neper_stat *(*stat)(struct flow *); /* stats callback */
 };
 
-struct flow *flow_create(const struct flow_create_args *);
+struct zerocopy_stat {
+        uint64_t bytes;
+        int ee_copied_events;
+};
+
+#ifdef WITH_IO_URING
+struct flow_uring_req {
+        struct flow *f;
+        req_handler cb;
+        void *user_data;
+};
+#endif
+
+void flow_update_zstat(struct flow *f, uint64_t zerocopied_bytes,
+                       int ee_copied);
+const struct zerocopy_stat *flow_get_zstat(const struct flow *f);
+
+#ifdef WITH_IO_URING
+void *flow_get_user_data(const struct flow *f);
+void flow_set_user_data(struct flow *f, void *user_data);
+int flow_uring_submit_sqe(struct flow_uring_req *f_req,
+                                     struct io_uring_sqe *sqe);
+int flow_uring_handle_completions(struct thread *t, struct timespec *timeout);
+#endif
+
+void *flow_create(const struct flow_create_args *);
 long flow_rtt_log_count(const struct flow *f);
 void flow_increment_rtt_log_count(struct flow *f);
 void flow_delete(struct flow *);
@@ -77,3 +114,4 @@ void flow_init_rx_zerocopy(struct flow *f, int buffer_size,
 ssize_t flow_recv_zerocopy(struct flow *f, void *copybuf, size_t copybuf_len);
 
 #endif
+/* clang-format on */

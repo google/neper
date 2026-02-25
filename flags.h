@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #ifndef THIRD_PARTY_NEPER_FLAGS_H
 #define THIRD_PARTY_NEPER_FLAGS_H
 
@@ -85,3 +87,4 @@ void flags_parser_destroy(struct flags_parser *fp);
 } while (0)
 
 #endif
+/* clang-format on */

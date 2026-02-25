@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #include "pq.h"
 #include "common.h"
 
@@ -139,3 +141,4 @@ struct neper_pq *neper_pq(double (*cmp)(void *, void *), uint32_t maxlen,
 
         return pq;
 }
+/* clang-format on */

@@ -14,11 +14,18 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #ifndef THIRD_PARTY_NEPER_THREAD_H
 #define THIRD_PARTY_NEPER_THREAD_H
 
 #include <pthread.h>
 #include <stdint.h>
+
+#ifdef WITH_IO_URING
+#include <liburing.h>
+#include <liburing/io_uring.h>
+#endif
 
 #include "lib.h"
 
@@ -136,6 +143,11 @@ struct thread {
         int64_t gap_ns;
         struct rtt_log *rtt_logs;
         long rtt_log_capacity;
+
+#ifdef WITH_IO_URING
+        int use_uring;
+        struct io_uring ring;
+#endif
 };
 
 uint64_t thread_stats_events(const struct thread *);
@@ -158,3 +170,4 @@ void thread_flush_stat(struct thread *);
 void thread_clear_flow_or_die(struct thread*, struct flow *);
 
 #endif
+/* clang-format on */

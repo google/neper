@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #include "common.h"
 #include "psp_lib.h"
 #include "socket.h"
@@ -265,3 +267,4 @@ void psp_post_listen(struct thread *t, int s, struct addrinfo *ai) {
 
         pthread_mutex_unlock(&psp_key_lock);
 }
+/* clang-format on */

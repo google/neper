@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #ifndef THIRD_PARTY_NEPER_RUSAGE_H
 #define THIRD_PARTY_NEPER_RUSAGE_H
 
@@ -43,3 +45,4 @@ void set_getrusage_enhanced(bool stime_use_proc, int num_threads);
 int getrusage_enhanced(int who, struct rusage *usage);
 
 #endif
+/* clang-format on */

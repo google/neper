@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #include <stdlib.h>
 #include <time.h>
 
@@ -117,3 +119,4 @@ void parse_duration(const char *arg, void *out, struct callbacks *cb)
         /* Never found a matching suffix. */
         LOG_FATAL(cb, "invalid suffix %s", suffix);
 }
+/* clang-format on */

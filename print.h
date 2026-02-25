@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+/* clang-format off */
+
 #ifndef THIRD_PARTY_NEPER_PRINT_H
 #define THIRD_PARTY_NEPER_PRINT_H
 
@@ -31,3 +33,4 @@ void print_latency_header(FILE *csv, const struct percentiles *);
 void print_rusage(FILE *csv, const struct rusage *, const char *nl);
 
 #endif
+/* clang-format on */
