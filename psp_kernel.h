@@ -46,4 +46,9 @@ struct psp_spi_tuple {
   psp_spi spi;
 };
 
+struct psp_spi_addr_tuple {
+  struct psp_spi_tuple psp_spi;
+  struct in6_addr saddr;
+};
+
 #endif  // PSP_KERNEL_H_
